@@ -111,7 +111,7 @@ void TA11Display::processMessage( const tiago_tactile_msgs::TA11::ConstPtr& msg 
       Ogre::Quaternion orientation;
       Ogre::Vector3 position;
       if (!context_->getFrameManager()->getTransform(sensor_frame,
-                                                     ros::Time::now(),
+                                                     msg->header.stamp,
                                                      position, orientation)) {
           ROS_DEBUG("Error transforming from frame '%s' to frame '%s'",
                     sensor_frame.c_str(), qPrintable(fixed_frame_));
