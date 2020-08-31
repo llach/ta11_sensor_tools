@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>ta11_controller</name>
+  <version>0.0.1</version>
+  <description>Reactive JointTrajectoryControllers for a TA11 equipped two-finger gripper.</description>
+
+  <maintainer email="llach@techfak.uni-bielefeld.de">llach</maintainer>
+
+  <license>BSD</license>
+
+  <author>Luca Lach</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+
+  <depend>roscpp</depend>
+  <depend>tiago_tactile_msgs</depend>
+  <depend>controller_interface</depend>
+  <depend>force_controller_core</depend>
+
+  <export>
+    <controller_interface plugin="${prefix}/ta11_controller_plugins.xml"/>
+  </export>
+</package>

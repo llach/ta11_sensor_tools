@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <node name="ta11_plot"
+        pkg="rqt_plot" type="rqt_plot" output="screen"
+        args="/ta11_tactile/sensors\[0\]/values\[0\] /ta11_tactile/sensors\[1\]/values\[0\] /ta11_debug/delta_F\[0\] /ta11_debug/delta_F\[1\]" />
+
+  <node name="ta11_plot_p"
+       pkg="rqt_plot" type="rqt_plot" output="screen"
+       args="ta11_debug/new_p\[0\] /ta11_debug/new_p\[1\] /ta11_debug/cur_p\[0\] /ta11_debug/cur_p\[1\] /ta11_debug/tra_p\[0\] /ta11_debug/tra_p\[1\]" />
+</launch>

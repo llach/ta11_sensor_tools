@@ -1,0 +1,21 @@
+<library path="lib/libta11_controller">
+
+    <class name="ta11_force_controller/TA11TrajectorySimController"
+           type="ta11_force_controller::TA11TrajectorySimController"
+           base_class_type="controller_interface::ControllerBase">
+        <description>
+            A JointTrajectoryController extension that modifies execution of individual finger trajectories based on
+            tactile sensor readings and relative finger positions.
+        </description>
+    </class>
+
+    <class name="ta11_force_controller/TA11TrajectoryRealController"
+           type="ta11_force_controller::TA11TrajectoryRealController"
+           base_class_type="controller_interface::ControllerBase">
+        <description>
+            A JointTrajectoryController extension that modifies execution of individual finger trajectories based on
+            tactile sensor readings and relative finger positions. Reads TA11 tactile data.
+        </description>
+    </class>
+
+</library>
