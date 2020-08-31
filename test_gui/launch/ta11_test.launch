@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+<arg name="sim" default="true" />
+
+<group unless="$(arg sim)">
+    <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui_ta11" output="screen" args="--standalone ta11_test --args --no-publish" />
+</group>
+
+<group if="$(arg sim)">
+    <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui_ta11_sim" output="screen" args="--standalone ta11_test --args --publish" />
+</group>
+
+</launch>
