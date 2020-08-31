@@ -64,7 +64,7 @@ install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
         )
 
-install(DIRECTORY launch config
+install(DIRECTORY config
         DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
         )
 
