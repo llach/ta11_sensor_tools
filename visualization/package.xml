@@ -1,0 +1,28 @@
+<package>
+  <name>ta11_viz</name>
+  <version>0.0.1</version>
+  <description>
+     Visualization for TA11 force sensor measurements.
+  </description>
+  <maintainer email="llach@techfak.uni-bielefeld.de">Luca Lach</maintainer>
+  <license>BSD</license>
+
+  <author>Luca Lach</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>qtbase5-dev</build_depend>
+  <build_depend>rviz</build_depend>
+
+  <run_depend>libqt5-core</run_depend>
+  <run_depend>libqt5-gui</run_depend>
+  <run_depend>libqt5-widgets</run_depend>
+  <run_depend>rviz</run_depend>
+
+  <build_depend>tiago_tactile_msgs</build_depend>
+  <run_depend>tiago_tactile_msgs</run_depend>
+
+  <export>
+      <rviz plugin="${prefix}/plugin_description.xml"/>
+  </export>
+</package>

@@ -1,0 +1,10 @@
+<library path="lib/libta11_viz">
+  <class name="ta11_viz/TA11"
+         type="ta11_viz::TA11Display"
+         base_class_type="rviz::Display">
+    <description>
+      Displays force measured by TA11 sensors.
+    </description>
+    <message_type>tactile_msgs/TactileState</message_type>
+  </class>
+</library>
