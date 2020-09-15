@@ -51,24 +51,26 @@ protected:
 
   // These Qt slots get connected to signals indicating changes in the user-editable properties.
 private Q_SLOTS:
-  void updateColorAndAlpha();
   void updateArrowScale();
+  void updateColorAndAlpha();
+  void updateForceThreshold();
 
   // Function to handle an incoming ROS message.
 private:
   void processMessage( const tiago_tactile_msgs::TA11::ConstPtr& msg );
-    Ogre::SceneNode* right_frame_;
-    Ogre::SceneNode* left_frame_;
+  Ogre::SceneNode* right_frame_;
+  Ogre::SceneNode* left_frame_;
 
-    std::shared_ptr<rviz::Arrow> right_arrow_;
-    std::shared_ptr<rviz::Arrow> left_arrow_;
+  std::shared_ptr<rviz::Arrow> right_arrow_;
+  std::shared_ptr<rviz::Arrow> left_arrow_;
 
-    float arrow_scale_;
+  float arrow_scale_, force_threshold_;
 
   // User-editable property variables.
   rviz::ColorProperty* color_property_;
   rviz::FloatProperty* alpha_property_;
   rviz::FloatProperty* arrow_scale_property_;
+  rviz::FloatProperty* force_threshold_property_;
 };
 
 }
