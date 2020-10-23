@@ -55,7 +55,7 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
 
     max_forces_= std::make_shared<std::vector<float>>(num_sensors_, 2.5);
 
-    debug_pub_ = root_nh.advertise<ta11_controller::TA11Debug>("/ta11_debug", 1);
+    debug_pub_ = root_nh.advertise<tiago_tactile_msgs::TA11Debug>("/ta11_debug", 1);
 
     NOISE_THRESH = 0.05;
 
@@ -94,7 +94,7 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
 //                        (*delta_p_)[0], (*delta_p_)[1],
 //                        current_state_.position[0], current_state_.position[1],
 //                        desired_state_.position[0], desired_state_.position[1]);
-        ta11_controller::TA11Debug dbg_msg = ta11_controller::TA11Debug();
+      tiago_tactile_msgs::TA11Debug dbg_msg = tiago_tactile_msgs::TA11Debug();
         dbg_msg.header.stamp = ros::Time::now();
 
         dbg_msg.k = {(*k_)[0], (*k_)[1]};

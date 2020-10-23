@@ -38,7 +38,7 @@
 #ifndef TA11_CONTROLLER_TA11_CONTROLLER_H
 #define TA11_CONTROLLER_TA11_CONTROLLER_H
 
-#include <ta11_controller/TA11Debug.h>
+#include <tiago_tactile_msgs/TA11Debug.h>
 #include <force_controller_core/force_controller.h>
 #include <joint_trajectory_controller/joint_trajectory_controller.h>
 #include <trajectory_interface/quintic_spline_segment.h>
@@ -58,7 +58,7 @@ class TA11TrajectoryController
 	// FTC overrides
     void update_sensors() override;
     bool check_controller_transition() override;
-	void publish_debug_info() override;
+	  void publish_debug_info() override;
     bool check_finished() override;
 
 protected:

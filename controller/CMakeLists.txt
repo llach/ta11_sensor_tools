@@ -13,24 +13,12 @@ find_package(Eigen3 REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
         roscpp
         tiago_tactile_msgs
-        message_generation
         controller_interface
         force_controller_core
         )
 
-add_message_files(
-        FILES
-        TA11Debug.msg
-)
-
-generate_messages(
-        DEPENDENCIES
-        std_msgs
-)
-
 catkin_package(
         CATKIN_DEPENDS
-        message_runtime
         force_controller_core
         INCLUDE_DIRS include
         LIBRARIES ${PROJECT_NAME}
