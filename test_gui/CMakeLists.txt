@@ -20,5 +20,6 @@ include_directories(
 
 install(PROGRAMS
   scripts/ta11_test
+  scripts/ta11_tiago
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

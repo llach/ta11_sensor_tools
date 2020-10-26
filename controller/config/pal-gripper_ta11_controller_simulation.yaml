@@ -1,4 +1,4 @@
-gripper_controller:
+gripper_force_controller:
   type: "ta11_force_controller/TA11TrajectorySimController"
   joints:
     - gripper_right_finger_joint

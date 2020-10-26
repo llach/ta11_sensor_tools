@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <rosparam command="load" file="$(find ta11_controller)/config/pal-gripper_ta11_controller.yaml" />
+    <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui_ta11" output="screen" args="--standalone ta11_tiago" />
+</launch>
