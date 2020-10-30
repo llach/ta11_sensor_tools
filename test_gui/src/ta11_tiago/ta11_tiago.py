@@ -10,13 +10,14 @@ from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
 from python_qt_binding.QtCore import QThread
 from python_qt_binding.QtWidgets import QWidget
+from python_qt_binding import QtCore
 
 from tiago_tactile_msgs.msg import TA11
 from trajectory_msgs.msg import JointTrajectoryPoint
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 
 from controller_manager.controller_manager_interface import *
-
+from controller_manager_msgs.srv import ListControllers
 
 class ACThread(QThread):
 
@@ -100,13 +101,21 @@ class TA11TIAGo(Plugin):
         self.close_traj = close_traj
 
         self.traj_ac = None
+        self.lc = rospy.ServiceProxy('controller_manager/list_controllers', ListControllers)
 
         # register button signals
         self._widget.btn_close.clicked.connect(self.on_btn_close)
         self._widget.btn_open.clicked.connect(self.on_btn_open)
 
         self._widget.btn_load_fc.clicked.connect(self.on_btn_load_fc)
+        self._widget.btn_reload_fc.clicked.connect(self.on_btn_reload_fc)
+        self._widget.btn_check_fc.clicked.connect(self.on_btn_check_fc)
 
+        self.state_lbl = self._widget.lbl_fc_state
+        self.state_lbl.setFixedWidth(95)
+        self.state_lbl.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+
+        self.on_btn_check_fc()
         self.act = None
 
     def gen_traj_points(self, first, last, total_time, num_points=5):
@@ -125,8 +134,56 @@ class TA11TIAGo(Plugin):
 
     def on_btn_load_fc(self):
         rospy.loginfo("Loading Force Controller ...")
+
+        stop_controller("gripper_controller")
+        rospy.loginfo("     - gripper_controller stopped")
+
+        load_controller("gripper_force_controller")
+        rospy.loginfo("     - gripper_force_controller loaded")
+
+        start_controller("gripper_force_controller")
+        rospy.loginfo("     - gripper_force_controller started")
+
+        self.on_btn_check_fc()
         rospy.loginfo("Done!")
-        pass
+
+    def on_btn_reload_fc(self):
+        rospy.loginfo("Reloading Force Controller ...")
+
+        stop_controller("gripper_force_controller")
+        rospy.loginfo("     - gripper_force_controller stopped")
+
+        unload_controller("gripper_force_controller")
+        rospy.loginfo("     - gripper_force_controller unloaded")
+
+        load_controller("gripper_force_controller")
+        rospy.loginfo("     - gripper_force_controller loaded")
+
+        start_controller("gripper_force_controller")
+        rospy.loginfo("     - gripper_force_controller started")
+
+        self.on_btn_check_fc()
+        rospy.loginfo("Done!")
+
+    def on_btn_check_fc(self):
+        try:
+            cons = self.lc()
+        except:
+            self.state_lbl.setText("ERR")
+            return
+
+        if cons.controller == []:
+            self.state_lbl.setText("UNL")
+            return
+
+        for c in cons.controller:
+            if c.name == "gripper_force_controller":
+                if c.state == 'running':
+                    self.state_lbl.setText("RUN")
+                elif c.state == 'stopped':
+                    self.state_lbl.setText("STOP")
+                return
+        self.state_lbl.setText("UNL")
 
     def on_btn_close(self):
         rospy.loginfo("Closing Gripper")
@@ -152,7 +209,7 @@ class TA11TIAGo(Plugin):
         self.act.start()
 
     def init_ac(self):
-        self.traj_ac = actionlib.SimpleActionClient('/gripper_controller/follow_joint_trajectory', FollowJointTrajectoryAction)
+        self.traj_ac = actionlib.SimpleActionClient('/gripper_force_controller/follow_joint_trajectory', FollowJointTrajectoryAction)
 
         rospy.loginfo("Waiting for gripper_controller ...")
         self.traj_ac.wait_for_server()
