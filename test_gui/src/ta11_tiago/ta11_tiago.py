@@ -1,6 +1,5 @@
 import os
 import rospy
-import rosbag
 import actionlib
 
 import numpy as np
@@ -13,11 +12,14 @@ from python_qt_binding.QtWidgets import QWidget
 from python_qt_binding import QtCore
 
 from tiago_tactile_msgs.msg import TA11
-from trajectory_msgs.msg import JointTrajectoryPoint
+from trajectory_msgs.msg import JointTrajectoryPoint, JointTrajectory
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 
 from controller_manager.controller_manager_interface import *
 from controller_manager_msgs.srv import ListControllers
+
+import moveit_commander
+
 
 class ACThread(QThread):
 
@@ -44,6 +46,15 @@ class ACThread(QThread):
 
         self.wid.btn_close.setEnabled(True)
         self.wid.btn_open.setEnabled(True)
+
+    def cancel(self):
+        self.ac.cancel_goal()
+        self.wid.lbl_rt_code.setText("C")
+
+        self.wid.btn_close.setEnabled(True)
+        self.wid.btn_open.setEnabled(True)
+
+        self.terminate()
 
 
 class TA11TIAGo(Plugin):
@@ -79,33 +90,13 @@ class TA11TIAGo(Plugin):
         # Add widget to the user interface
         context.add_widget(self._widget)
 
-        # these bags only contain one trajectory each
-        open_bag = rosbag.Bag(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                               '../../resources/steel_open.bag'))
-        close_bag = rosbag.Bag(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                           '../../resources/steel_close.bag'))
-
-        open_traj, close_traj = None, None
-        for topic, msg, t in open_bag.read_messages():
-            open_traj = msg.goal.trajectory
-        for topic, msg, t in close_bag.read_messages():
-            close_traj = msg.goal.trajectory
-        open_bag.close()
-        close_bag.close()
-
-        open_traj.points = self.gen_traj_points(self.J_CLOSE, self.J_OPEN, 5)
-        close_traj.points = self.gen_traj_points(self.J_OPEN, self.J_CLOSE, 5)
-
-        rospy.loginfo("Opening trajectory with {} points and closing trajectory with {} points.".format(len(open_traj.points), len(close_traj.points)))
-        self.open_traj = open_traj
-        self.close_traj = close_traj
-
         self.traj_ac = None
         self.lc = rospy.ServiceProxy('controller_manager/list_controllers', ListControllers)
 
         # register button signals
         self._widget.btn_close.clicked.connect(self.on_btn_close)
         self._widget.btn_open.clicked.connect(self.on_btn_open)
+        self._widget.btn_cancel.clicked.connect(self.on_btn_cancel)
 
         self._widget.btn_load_fc.clicked.connect(self.on_btn_load_fc)
         self._widget.btn_reload_fc.clicked.connect(self.on_btn_reload_fc)
@@ -118,11 +109,17 @@ class TA11TIAGo(Plugin):
         self.on_btn_check_fc()
         self.act = None
 
-    def gen_traj_points(self, first, last, total_time, num_points=5):
+        self.group = moveit_commander.MoveGroupCommander("gripper")
+
+    def generate_trajectory(self, first, last, total_time, num_points=5):
+        jt = JointTrajectory()
+        jt.header.frame_id = 'base_footprint'
+        jt.joint_names = ['gripper_left_finger_joint', 'gripper_right_finger_joint']
+
         pts = []
-        for t, j in zip(np.linspace(0, total_time, num_points), np.linspace(first, last, num_points)):
+        for t, j, i in zip(np.linspace(0, total_time, num_points), np.linspace(first[0], last, num_points), np.linspace(first[1], last, num_points)):
             jp = JointTrajectoryPoint()
-            jp.positions = [j, j]
+            jp.positions = [j, i]
 
             if t == 0.0: t += 0.1
             tm = rospy.Time(t)
@@ -130,7 +127,9 @@ class TA11TIAGo(Plugin):
             jp.time_from_start.nsecs = tm.nsecs
 
             pts.append(jp)
-        return pts
+
+        jt.points = pts
+        return jt
 
     def on_btn_load_fc(self):
         rospy.loginfo("Loading Force Controller ...")
@@ -187,21 +186,34 @@ class TA11TIAGo(Plugin):
 
     def on_btn_close(self):
         rospy.loginfo("Closing Gripper")
-        self.send_traj('close')
+        start = [self.J_OPEN, self.J_OPEN]
+        try:
+            start = self.group.get_current_joint_values()
+        except Exception as e:
+            rospy.logwarn("Could not read current joint values: {}".format(e))
+
+        self.send_traj(self.generate_trajectory(start, self.J_CLOSE, 5))
 
     def on_btn_open(self):
         rospy.loginfo("Opening Gripper")
-        self.send_traj('open')
+        start = [self.J_CLOSE, self.J_CLOSE]
+        try:
+            start = self.group.get_current_joint_values()
+        except Exception as e:
+            rospy.logwarn("Could not read current joint values: {}".format(e))
 
-    def send_traj(self, traj_name):
+        self.send_traj(self.generate_trajectory(start, self.J_OPEN, 5))
+
+    def on_btn_cancel(self):
+        if self.act:
+            self.act.cancel()
+
+    def send_traj(self, traj):
         if not self.traj_ac:
             self.init_ac()
 
         g = FollowJointTrajectoryGoal()
-        if traj_name == 'open':
-            g.trajectory = self.open_traj
-        elif traj_name == 'close':
-            g.trajectory = self.close_traj
+        g.trajectory = traj
 
         self.traj_ac.send_goal(g)
         timeout = max(1.0, g.trajectory.points[-1].time_from_start.secs*1.5)
@@ -218,6 +230,8 @@ class TA11TIAGo(Plugin):
     def shutdown_plugin(self):
         rospy.loginfo("TA11Test plugin shutting down ...")
         self.active = False
+        if self.act:
+            self.act.cancel()
         rospy.loginfo("TA11Test plugin exited.")
 
     def save_settings(self, plugin_settings, instance_settings):
