@@ -39,8 +39,8 @@
 
 namespace ta11_force_controller {
 
-typedef ta11_controller::TA11TrajectoryController<ta11_controller::TactileSensorSim>
-    TA11TrajectorySimController;
+typedef ta11_controller::TA11TrajectoryController<ta11_controller::TactileSensorSub>
+    TA11TrajectorySubController;
 
 typedef ta11_controller::TA11TrajectoryController<ta11_controller::TactileSensorReal>
     TA11TrajectoryRealController;
@@ -49,7 +49,7 @@ typedef ta11_controller::TA11TrajectoryController<ta11_controller::TactileSensor
 // Pluginlib
 #include <pluginlib/class_list_macros.hpp>
 
-PLUGINLIB_EXPORT_CLASS(ta11_force_controller::TA11TrajectorySimController,
+PLUGINLIB_EXPORT_CLASS(ta11_force_controller::TA11TrajectorySubController,
                        controller_interface::ControllerBase)
 PLUGINLIB_EXPORT_CLASS(ta11_force_controller::TA11TrajectoryRealController,
                        controller_interface::ControllerBase)

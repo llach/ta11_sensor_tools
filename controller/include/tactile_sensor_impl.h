@@ -44,18 +44,18 @@ TactileSensorBase::TactileSensorBase(ros::NodeHandle& nh, std::shared_ptr<std::v
     tmp_forces_= std::make_shared<std::vector<float>>(2, 0.0);
 }
 
-TactileSensorSim::TactileSensorSim(ros::NodeHandle& nh, std::shared_ptr<std::vector<float>> forces) : TactileSensorBase(nh, forces, true) {
-    sub_ = nh.subscribe("/ta11", 0, &TactileSensorSim::sensor_cb_, this);
+TactileSensorSub::TactileSensorSub(ros::NodeHandle& nh, std::shared_ptr<std::vector<float>> forces) : TactileSensorBase(nh, forces, true) {
+    sub_ = nh.subscribe("/ta11", 0, &TactileSensorSub::sensor_cb_, this);
     ROS_INFO_STREAM("Registered subscriber for \"/ta11\"");
 }
 
-void TactileSensorSim::sensor_cb_(const tiago_tactile_msgs::TA11 ts) {
+void TactileSensorSub::sensor_cb_(const tiago_tactile_msgs::TA11 ts) {
     for (int i = 0; i < tmp_forces_->size(); i++){
         (*tmp_forces_)[i] = ts.sensor_values[i];
     }
 }
 
-void TactileSensorSim::update() {
+void TactileSensorSub::update() {
     for (int i = 0; i < tmp_forces_->size(); i++){
         (*forces_)[i] = (*tmp_forces_)[i];
     }

@@ -52,12 +52,14 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
     } catch(std::runtime_error& e) {
         ROS_ERROR_STREAM_NAMED(name_, "Could not init FTC: " << e.what());
     }
+    // print verbose errors
+    this->verbose_ = true;
 
-    max_forces_= std::make_shared<std::vector<float>>(num_sensors_, 2.5);
+    max_forces_= std::make_shared<std::vector<float>>(num_sensors_, 1.0);
 
     debug_pub_ = root_nh.advertise<tiago_tactile_msgs::TA11Debug>("/ta11_debug", 1);
 
-    NOISE_THRESH = 0.05;
+    NOISE_THRESH = 0.25;
 
    return ret;
 }
@@ -70,7 +72,7 @@ inline void TA11TrajectoryController<TactileSensors>::update_sensors() {
 template <class TactileSensors>
 inline bool TA11TrajectoryController<TactileSensors>::check_controller_transition() {
     for (auto& ss : sensor_states_){
-        if (ss < GOT_CONTACT)
+        if (ss < GOT_CONTACT || ss >= GOAL)
             return false;
     }
     return true;
@@ -79,8 +81,12 @@ inline bool TA11TrajectoryController<TactileSensors>::check_controller_transitio
 template <class TactileSensors>
 inline bool TA11TrajectoryController<TactileSensors>::check_finished() {
     for (int l = 0; l < num_sensors_; l++){
-        if ((*forces_)[l] < (*max_forces_)[l])
-            return false;
+      if(sensor_states_[l] == GOAL){
+        ROS_INFO_THROTTLE_NAMED(1, name_, "Sensor %d is already in goal", l);
+        continue;
+      }
+      if (std::abs((*forces_)[l]) < (*max_forces_)[l])
+          return false;
     }
     return true;
 }

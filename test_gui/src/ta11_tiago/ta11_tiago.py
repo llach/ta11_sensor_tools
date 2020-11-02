@@ -13,7 +13,7 @@ from python_qt_binding import QtCore
 
 from tiago_tactile_msgs.msg import TA11
 from trajectory_msgs.msg import JointTrajectoryPoint, JointTrajectory
-from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
+from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal, JointTrajectoryControllerState
 
 from controller_manager.controller_manager_interface import *
 from controller_manager_msgs.srv import ListControllers
@@ -65,7 +65,7 @@ class TA11TIAGo(Plugin):
     FRC_MAX    = 3.0
     FRC_STEP   = 0.010
 
-    J_OPEN  = 0.05
+    J_OPEN  = 0.043
     J_CLOSE = 0.0
 
     def __init__(self, context):
@@ -109,6 +109,9 @@ class TA11TIAGo(Plugin):
         self.on_btn_check_fc()
         self.act = None
 
+        self.current_state = None
+        self.cs_sub = rospy.Subscriber("/gripper_force_controller/state", JointTrajectoryControllerState, self.state_cb)
+
         self.group = moveit_commander.MoveGroupCommander("gripper")
 
     def generate_trajectory(self, first, last, total_time, num_points=5):
@@ -131,10 +134,15 @@ class TA11TIAGo(Plugin):
         jt.points = pts
         return jt
 
+    def state_cb(self, state):
+        self.current_state = state.actual.positions
+        self._widget.lbl_l_pos.setText('{:.3f}'.format(state.actual.positions[0]))
+        self._widget.lbl_r_pos.setText('{:.3f}'.format(state.actual.positions[1]))
+
     def on_btn_load_fc(self):
         rospy.loginfo("Loading Force Controller ...")
 
-        stop_controller("gripper_controller")
+        print(stop_controller("gripper_controller"))
         rospy.loginfo("     - gripper_controller stopped")
 
         load_controller("gripper_force_controller")
@@ -186,22 +194,20 @@ class TA11TIAGo(Plugin):
 
     def on_btn_close(self):
         rospy.loginfo("Closing Gripper")
-        start = [self.J_OPEN, self.J_OPEN]
-        try:
-            start = self.group.get_current_joint_values()
-        except Exception as e:
-            rospy.logwarn("Could not read current joint values: {}".format(e))
+
+        if self.current_state:
+            start = self.current_state
+        else:
+            start = [self.J_OPEN, self.J_OPEN]
 
         self.send_traj(self.generate_trajectory(start, self.J_CLOSE, 5))
 
     def on_btn_open(self):
         rospy.loginfo("Opening Gripper")
-        start = [self.J_CLOSE, self.J_CLOSE]
-        try:
-            start = self.group.get_current_joint_values()
-        except Exception as e:
-            rospy.logwarn("Could not read current joint values: {}".format(e))
-
+        if self.current_state:
+            start = self.current_state
+        else:
+            start = [self.J_CLOSE, self.J_CLOSE]
         self.send_traj(self.generate_trajectory(start, self.J_OPEN, 5))
 
     def on_btn_cancel(self):

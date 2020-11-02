@@ -55,10 +55,10 @@ protected:
 };
 
 // listens to topic for simulation use
-class TactileSensorSim : public TactileSensorBase
+class TactileSensorSub : public TactileSensorBase
 {
 public:
-    TactileSensorSim(ros::NodeHandle& root_nh, std::shared_ptr<std::vector<float>> forces);
+    TactileSensorSub(ros::NodeHandle& root_nh, std::shared_ptr<std::vector<float>> forces);
     void update() override;
 private:
     ros::Subscriber sub_;

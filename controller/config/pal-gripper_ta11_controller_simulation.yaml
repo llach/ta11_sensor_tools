@@ -1,5 +1,5 @@
 gripper_force_controller:
-  type: "ta11_force_controller/TA11TrajectorySimController"
+  type: "ta11_force_controller/TA11TrajectorySubController"
   joints:
     - gripper_right_finger_joint
     - gripper_left_finger_joint

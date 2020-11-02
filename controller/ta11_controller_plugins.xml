@@ -1,7 +1,7 @@
 <library path="lib/libta11_controller">
 
-    <class name="ta11_force_controller/TA11TrajectorySimController"
-           type="ta11_force_controller::TA11TrajectorySimController"
+    <class name="ta11_force_controller/TA11TrajectorySubController"
+           type="ta11_force_controller::TA11TrajectorySubController"
            base_class_type="controller_interface::ControllerBase">
         <description>
             A JointTrajectoryController extension that modifies execution of individual finger trajectories based on
