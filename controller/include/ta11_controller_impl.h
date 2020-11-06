@@ -93,24 +93,20 @@ inline bool TA11TrajectoryController<TactileSensors>::check_finished() {
 
 template <class TactileSensors>
 inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
-    if (c_state_ > TRANSITION) {
-//        ROS_DEBUG_NAMED(name_ + "hook", "\nk:  [%.6f, %.6f]\ndF: [%.6f, %.6f]\ndp: [%.6f, %.6f]\ncp: [%.6f, %.6f]\nnp: [%.6f, %.6f]",
-//                        (*k_)[0], (*k_)[1],
-//                        (*delta_F_)[0], (*delta_F_)[1],
-//                        (*delta_p_)[0], (*delta_p_)[1],
-//                        current_state_.position[0], current_state_.position[1],
-//                        desired_state_.position[0], desired_state_.position[1]);
-      tiago_tactile_msgs::TA11Debug dbg_msg = tiago_tactile_msgs::TA11Debug();
-        dbg_msg.header.stamp = ros::Time::now();
+    tiago_tactile_msgs::TA11Debug dbg_msg = tiago_tactile_msgs::TA11Debug();
+    dbg_msg.header.stamp = ros::Time::now();
 
-        dbg_msg.k = {(*k_)[0], (*k_)[1]};
-        dbg_msg.delta_F = {(*delta_F_)[0], (*delta_F_)[1]};
-        dbg_msg.delta_p = {(*delta_p_)[0], (*delta_p_)[1]};
-        dbg_msg.cur_p = {current_state_.position[0], current_state_.position[1]};
-        dbg_msg.new_p = {desired_state_.position[0], desired_state_.position[1]};
-        dbg_msg.tra_p = {(*pos_T_)[0], (*pos_T_)[1]};
-        debug_pub_.publish(dbg_msg);
-    }
+    dbg_msg.k = {(*k_)[0], (*k_)[1]};
+    dbg_msg.delta_F = {(*delta_F_)[0], (*delta_F_)[1]};
+    dbg_msg.delta_p = {(*delta_p_)[0], (*delta_p_)[1]};
+    dbg_msg.p_T = {(*pos_T_)[0], (*pos_T_)[1]};
+
+    dbg_msg.c_state = c_state_;
+
+    for (auto& j : sensor_states_)
+      dbg_msg.joint_states.push_back(j);
+
+    debug_pub_.publish(dbg_msg);
 }
 
 }

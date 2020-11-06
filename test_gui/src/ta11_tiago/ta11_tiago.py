@@ -136,8 +136,8 @@ class TA11TIAGo(Plugin):
 
     def state_cb(self, state):
         self.current_state = state.actual.positions
-        self._widget.lbl_l_pos.setText('{:.3f}'.format(state.actual.positions[0]))
         self._widget.lbl_r_pos.setText('{:.3f}'.format(state.actual.positions[1]))
+        self._widget.lbl_l_pos.setText('{:.3f}'.format(state.actual.positions[0]))
 
     def on_btn_load_fc(self):
         rospy.loginfo("Loading Force Controller ...")

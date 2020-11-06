@@ -31,7 +31,7 @@ add_definitions(-DQT_NO_KEYWORDS)
 set(SRC_FILES
         src/ta11_display.cpp
         )
-
+disable_pal_flags()
 ## An rviz plugin is just a shared library, so here we declare the
 ## library to be called ``${PROJECT_NAME}`` and specify the list of
 ## source files we collected above in ``${SRC_FILES}``.

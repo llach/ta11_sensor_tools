@@ -16,7 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
         controller_interface
         force_controller_core
         )
-
+disable_pal_flags()
 catkin_package(
         CATKIN_DEPENDS
         force_controller_core
