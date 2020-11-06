@@ -117,7 +117,7 @@ class TA11TIAGo(Plugin):
     def generate_trajectory(self, first, last, total_time, num_points=5):
         jt = JointTrajectory()
         jt.header.frame_id = 'base_footprint'
-        jt.joint_names = ['gripper_left_finger_joint', 'gripper_right_finger_joint']
+        jt.joint_names = ['gripper_right_finger_joint', 'gripper_left_finger_joint']
 
         pts = []
         for t, j, i in zip(np.linspace(0, total_time, num_points), np.linspace(first[0], last, num_points), np.linspace(first[1], last, num_points)):
@@ -136,8 +136,8 @@ class TA11TIAGo(Plugin):
 
     def state_cb(self, state):
         self.current_state = state.actual.positions
-        self._widget.lbl_r_pos.setText('{:.3f}'.format(state.actual.positions[1]))
-        self._widget.lbl_l_pos.setText('{:.3f}'.format(state.actual.positions[0]))
+        self._widget.lbl_r_pos.setText('{:.3f}'.format(state.actual.positions[0]))
+        self._widget.lbl_l_pos.setText('{:.3f}'.format(state.actual.positions[1]))
 
     def on_btn_load_fc(self):
         rospy.loginfo("Loading Force Controller ...")
