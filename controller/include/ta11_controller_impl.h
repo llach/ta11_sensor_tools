@@ -59,6 +59,10 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
 
     debug_pub_ = root_nh.advertise<tiago_tactile_msgs::TA11Debug>("/ta11_debug", 1);
 
+    ROS_INFO_NAMED(name_, "regitering dynamic reconfigure server ...");
+    f_ = boost::bind(&TA11TrajectoryController<TactileSensors>::dr_callback, this, _1, _2);
+    server_.setCallback(f_);
+
     NOISE_THRESH = 0.25;
 
    return ret;
@@ -97,9 +101,14 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
     dbg_msg.header.stamp = ros::Time::now();
 
     dbg_msg.k = {(*k_)[0], (*k_)[1]};
+    dbg_msg.f = {(*forces_)[0], (*forces_)[1]};
+    dbg_msg.p = {current_state_.position[0], current_state_.position[1]};
     dbg_msg.delta_F = {(*delta_F_)[0], (*delta_F_)[1]};
     dbg_msg.delta_p = {(*delta_p_)[0], (*delta_p_)[1]};
     dbg_msg.p_T = {(*pos_T_)[0], (*pos_T_)[1]};
+
+    dbg_msg.noise_treshold = {-NOISE_THRESH, NOISE_THRESH};
+    dbg_msg.max_forces = {-(*max_forces_)[0], (*max_forces_)[1]};
 
     dbg_msg.c_state = c_state_;
 
@@ -109,6 +118,11 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
     debug_pub_.publish(dbg_msg);
 }
 
+template <class TactileSensors>
+inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controller::TA11ControllerDRConfig &config, uint32_t level) {
+  ROS_INFO("Reconfigure Request: max_forces: %f", config.max_force_thresh);
+  max_forces_= std::make_shared<std::vector<float>>(num_sensors_, config.max_force_thresh);
+}
 }
 
 #endif  // TA11_CONTROLLER_TA11_CONTROLLER_IMPL_H

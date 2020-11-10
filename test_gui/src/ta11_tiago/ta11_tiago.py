@@ -4,7 +4,6 @@ import actionlib
 
 import numpy as np
 
-from threading import Thread
 from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
 from python_qt_binding.QtCore import QThread
@@ -17,8 +16,6 @@ from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryG
 
 from controller_manager.controller_manager_interface import *
 from controller_manager_msgs.srv import ListControllers
-
-import moveit_commander
 
 
 class ACThread(QThread):
@@ -39,7 +36,10 @@ class ACThread(QThread):
         if self.ac.wait_for_result(rospy.Duration(secs=self.timeout)):
             res = self.ac.get_result()
             rospy.loginfo("Trajectory execution finished: {}".format(res))
-            self.wid.lbl_rt_code.setText("{}".format(res.error_code))
+            if res is None:
+                self.wid.lbl_rt_code.setText("E")
+            else:
+                self.wid.lbl_rt_code.setText("{}".format(res.error_code))
         else:
             rospy.loginfo("AS timeout!".format(self.timeout))
             self.wid.lbl_rt_code.setText("T")
@@ -111,8 +111,6 @@ class TA11TIAGo(Plugin):
 
         self.current_state = None
         self.cs_sub = rospy.Subscriber("/gripper_force_controller/state", JointTrajectoryControllerState, self.state_cb)
-
-        self.group = moveit_commander.MoveGroupCommander("gripper")
 
     def generate_trajectory(self, first, last, total_time, num_points=5):
         jt = JointTrajectory()
@@ -235,6 +233,8 @@ class TA11TIAGo(Plugin):
 
     def shutdown_plugin(self):
         rospy.loginfo("TA11Test plugin shutting down ...")
+        self.cs_sub.unregister()
+        del self.cs_sub
         self.active = False
         if self.act:
             self.act.cancel()

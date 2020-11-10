@@ -45,6 +45,9 @@
 
 #include <joint_trajectory_controller/joint_trajectory_segment.h>
 
+#include <dynamic_reconfigure/server.h>
+#include <ta11_controller/TA11ControllerDRConfig.h>
+
 namespace ta11_controller {
 
 template <class TactileSensors>
@@ -65,6 +68,10 @@ protected:
     #include "force_controller_core/easy_include_fc.h"
 
     ros::Publisher debug_pub_;
+    dynamic_reconfigure::Server<ta11_controller::TA11ControllerDRConfig> server_;
+    dynamic_reconfigure::Server<ta11_controller::TA11ControllerDRConfig>::CallbackType f_;
+
+    void dr_callback(ta11_controller::TA11ControllerDRConfig &config, uint32_t level);
 };
 
 }

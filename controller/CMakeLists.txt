@@ -15,8 +15,15 @@ find_package(catkin REQUIRED COMPONENTS
         tiago_tactile_msgs
         controller_interface
         force_controller_core
+        dynamic_reconfigure
         )
+
+generate_dynamic_reconfigure_options(
+        cfg/TA11ControllerDR.cfg
+)
+
 disable_pal_flags()
+
 catkin_package(
         CATKIN_DEPENDS
         force_controller_core
@@ -35,7 +42,7 @@ add_library(${PROJECT_NAME}
         src/ta11_controller.cpp
         )
 
-
+add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_gencfg)
 target_link_libraries(${PROJECT_NAME}
         ${catkin_LIBRARIES}
         ${EIGEN3_LIBRARIES}
