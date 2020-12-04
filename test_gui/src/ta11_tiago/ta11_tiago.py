@@ -29,7 +29,8 @@ class ACThread(QThread):
 
     def run(self):
         rospy.loginfo("waiting for result for {}s ...".format(self.timeout))
-
+        self.wid.lbl_rt_code.setText("-")
+        
         self.wid.btn_close.setEnabled(False)
         self.wid.btn_open.setEnabled(False)
 
@@ -214,7 +215,11 @@ class TA11TIAGo(Plugin):
 
     def send_traj(self, traj):
         if not self.traj_ac:
-            self.init_ac()
+            if not self.init_ac():
+                self._widget.lbl_rt_code.setText("IE")
+                rospy.loginfo("Action Server not reachable!")
+                return
+            rospy.loginfo("Action Server ready!")
 
         g = FollowJointTrajectoryGoal()
         g.trajectory = traj
@@ -228,8 +233,7 @@ class TA11TIAGo(Plugin):
         self.traj_ac = actionlib.SimpleActionClient('/gripper_force_controller/follow_joint_trajectory', FollowJointTrajectoryAction)
 
         rospy.loginfo("Waiting for gripper_controller ...")
-        self.traj_ac.wait_for_server()
-        rospy.loginfo("Ready!")
+        return self.traj_ac.wait_for_server(rospy.Duration(secs=5))
 
     def shutdown_plugin(self):
         rospy.loginfo("TA11Test plugin shutting down ...")

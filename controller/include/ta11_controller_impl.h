@@ -55,13 +55,14 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
     // print verbose errors
     this->verbose_ = true;
 
-    max_forces_= std::make_shared<std::vector<float>>(num_sensors_, 1.0);
+  max_forces_= std::make_shared<std::vector<float>>(num_sensors_, 1.0);
+  k_= std::make_shared<std::vector<float>>(num_sensors_, 850.0);
 
     debug_pub_ = root_nh.advertise<tiago_tactile_msgs::TA11Debug>("/ta11_debug", 1);
 
     ROS_INFO_NAMED(name_, "regitering dynamic reconfigure server ...");
-    f_ = boost::bind(&TA11TrajectoryController<TactileSensors>::dr_callback, this, _1, _2);
-    server_.setCallback(f_);
+//    f_ = boost::bind(&TA11TrajectoryController<TactileSensors>::dr_callback, this, _1, _2);
+//    server_.setCallback(f_);
 
     NOISE_THRESH = 0.25;
 
@@ -107,10 +108,18 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
     dbg_msg.delta_p = {(*delta_p_)[0], (*delta_p_)[1]};
     dbg_msg.p_T = {(*pos_T_)[0], (*pos_T_)[1]};
 
+    dbg_msg.delta_p_force = {(*delta_p_force_)[0], (*delta_p_force_)[1]};
+    dbg_msg.delta_p_vel = {(*delta_p_vel_)[0], (*delta_p_vel_)[1]};
+
     dbg_msg.noise_treshold = {-NOISE_THRESH, NOISE_THRESH};
     dbg_msg.max_forces = {-(*max_forces_)[0], (*max_forces_)[1]};
 
     dbg_msg.c_state = c_state_;
+
+    dbg_msg.des_vel = {(*des_vel_)[0], (*des_vel_)[1]};
+
+    dbg_msg.vel_limit = vel_limit_;
+    dbg_msg.error_integral = error_integral_;
 
     for (auto& j : sensor_states_)
       dbg_msg.joint_states.push_back(j);
@@ -120,8 +129,15 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
 
 template <class TactileSensors>
 inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controller::TA11ControllerDRConfig &config, uint32_t level) {
-  ROS_INFO("Reconfigure Request: max_forces: %f", config.max_force_thresh);
+  ROS_INFO("Reconfigure Request:\n\tmax_forces: %f\n\tlambda: %f\n\tk: %d\n\tK_i: %f",
+          config.max_force_thresh, config.lambda, config.k,
+          config.k_i);
   max_forces_= std::make_shared<std::vector<float>>(num_sensors_, config.max_force_thresh);
+  k_= std::make_shared<std::vector<float>>(num_sensors_, config.k);
+  lambda_ = config.lambda;
+  goal_maintain_ = config.goal_maintain;
+  K_i_ = config.k_i;
+//  min_vel_ = config.min_vel;
 }
 }
 
