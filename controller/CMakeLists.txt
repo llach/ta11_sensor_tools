@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
         tiago_tactile_msgs
         controller_interface
         dynamic_reconfigure
+        force_controller_core
         )
 
 generate_dynamic_reconfigure_options(

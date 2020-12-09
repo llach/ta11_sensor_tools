@@ -47,6 +47,8 @@
 #include <tiago_tactile_msgs/TA11Debug.h>
 #include <ta11_controller/TA11ControllerDRConfig.h>
 
+#include "force_controller_core/force_controller.h"
+
 namespace ta11_controller {
 
 template <class TactileSensors>
@@ -80,8 +82,24 @@ protected:
     typedef std::shared_ptr<TactileSensors> TactileSensorsPtr;
     TactileSensorsPtr sensors_;
 
-    // sample times for joints
-    std::vector<ros::Time> joint_times_;
+    // pointer to force vector. Written to by TactileSensors and read by ForceController
+    std::vector<std::shared_ptr<float>> forces_;
+
+    // list of joint-level force controllers
+    std::vector<fcc::JointForceController> jfc_;
+
+    // Force Controller parameters
+    float NOISE_THRESH = 0.25;
+
+    float init_k_ = 875;
+
+    float min_vel_ = 0.01;
+
+    float K_p_ = 5;
+    float K_i_ = 0.001;
+
+    float max_error_int_ = 1.1;
+    int f_error_window_ = 200;
 };
 
 }

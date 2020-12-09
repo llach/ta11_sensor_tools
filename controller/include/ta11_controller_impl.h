@@ -45,12 +45,12 @@ template <class TactileSensors>
 inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::PositionJointInterface* hw,
                                                            ros::NodeHandle& root_nh, ros::NodeHandle& controller_nh) {
     name_ = "TA11C";
-    ROS_INFO_NAMED(name_, "Initializing TA11TrajectoryController.");
+    ROS_INFO_NAMED(name_, "Initializing TA11TrajectoryController ...");
     bool ret = 0;
     try {
         ret = JointTrajectoryController::init(hw, root_nh, controller_nh);
     } catch(std::runtime_error& e) {
-        ROS_ERROR_STREAM_NAMED(name_, "Could not init FTC: " << e.what());
+        ROS_ERROR_STREAM_NAMED(name_, "Could not init JTC: " << e.what());
     }
     // print verbose errors
     this->verbose_ = true;
@@ -67,9 +67,23 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
 
     for (int i=0; i<joint_names_.size(); i++){
       ROS_INFO_STREAM_NAMED(name_, "joint_name[" << i << "] = " << joint_names_[i]);
-    }
 
-    joint_times_.resize(num_sensors_);
+      std::shared_ptr<float> fp = std::make_shared<float>(0.0);
+      fcc::JointForceController jfc(joint_names_[i],
+                                    fp,
+                                    0.25, // force threshold
+                                    2.2, // target force
+                                    875, // initial k
+                                    0.01, // minimum velocity
+                                    5, // K_p
+                                    0.001, // K_i
+                                    1.1, // maximum error integral value
+                                    200 // force error integral windows length
+                                    );
+
+      jfc_.push_back(jfc);
+      forces_.push_back(fp);
+    }
 
 //    sensors_ = std::make_shared<TactileSensors>(root_nh, forces_);
 
@@ -82,7 +96,9 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
     f_ = boost::bind(&TA11TrajectoryController<TactileSensors>::dr_callback, this, _1, _2);
     server_.setCallback(f_);
 
-   return ret;
+    ROS_INFO_NAMED(name_, "TA11 controller setup done!");
+
+  return ret;
 }
 
 //template <class TactileSensors>
@@ -266,10 +282,8 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
 //      (*delta_p_force_)[i] = std::abs(delta_p_force);
 
       } else {
-        // todo move somewhere else
-        joint_times_[i] +=period;
         segment_it =
-                sample(curr_traj[i], time_data.uptime.toSec(), desired_joint_state_);
+                sample(curr_traj[i], time_data.uptime.toSec(), desired_joint_state_); // todo use joint_times_
         if (curr_traj[i].end() == segment_it) {
           // Non-realtime safe, but should never happen under normal operation
           ROS_ERROR_NAMED(
@@ -371,7 +385,7 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
       }
     }
   }
-  
+
 
   // If there is an active goal and all segments finished successfully then set goal as succeeded
   // current_active_goal is reused from above the state update
