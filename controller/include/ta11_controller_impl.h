@@ -85,10 +85,7 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
       forces_.push_back(fp);
     }
 
-//    sensors_ = std::make_shared<TactileSensors>(root_nh, forces_);
-
-//  max_forces_= std::make_shared<std::vector<float>>(num_sensors_, 1.0);
-//  k_= std::make_shared<std::vector<float>>(num_sensors_, 850.0);
+    sensors_ = std::make_shared<TactileSensors>(root_nh, forces_);
 
     debug_pub_ = root_nh.advertise<tiago_tactile_msgs::TA11Debug>("/ta11_debug", 1);
 
@@ -101,11 +98,6 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
   return ret;
 }
 
-//template <class TactileSensors>
-//inline void TA11TrajectoryController<TactileSensors>::update_sensors() {
-//    sensors_->update();
-//}
-//
 //template <class TactileSensors>
 //inline bool TA11TrajectoryController<TactileSensors>::check_controller_transition() {
 //    for (auto& ss : sensor_states_){
@@ -156,8 +148,8 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
   // the
   // next control cycle, leaving the current cycle without a valid trajectory.
 
-  // call child template class to update sensors
-//  update_sensors();
+  // read new force values from sensors
+  sensors_->update();
 
   /*
    * Update forces and sensor states.

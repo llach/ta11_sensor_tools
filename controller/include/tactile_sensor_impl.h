@@ -40,28 +40,29 @@
 #include <tactile_sensor.h>
 
 namespace ta11_controller {
-TactileSensorBase::TactileSensorBase(ros::NodeHandle& nh, std::shared_ptr<std::vector<float>> forces, bool simulation) : nh_(nh), forces_(forces), sim(simulation){
-    tmp_forces_= std::make_shared<std::vector<float>>(2, 0.0);
+TactileSensorBase::TactileSensorBase(ros::NodeHandle& nh, std::vector<std::shared_ptr<float>> forces, bool simulation) : nh_(nh), forces_(forces), sim(simulation){
+  for (int i = 0; i < forces_.size(); i++)
+    tmp_forces_.push_back(0.0);
 }
 
-TactileSensorSub::TactileSensorSub(ros::NodeHandle& nh, std::shared_ptr<std::vector<float>> forces) : TactileSensorBase(nh, forces, true) {
+TactileSensorSub::TactileSensorSub(ros::NodeHandle& nh, std::vector<std::shared_ptr<float>> forces) : TactileSensorBase(nh, forces, true) {
     sub_ = nh.subscribe("/ta11", 0, &TactileSensorSub::sensor_cb_, this);
     ROS_INFO_STREAM("Registered subscriber for \"/ta11\"");
 }
 
 void TactileSensorSub::sensor_cb_(const tiago_tactile_msgs::TA11 ts) {
-    for (int i = 0; i < tmp_forces_->size(); i++){
-        (*tmp_forces_)[i] = ts.sensor_values[i];
+    for (int i = 0; i < tmp_forces_.size(); i++){
+        tmp_forces_[i] = ts.sensor_values[i];
     }
 }
 
 void TactileSensorSub::update() {
-    for (int i = 0; i < tmp_forces_->size(); i++){
-        (*forces_)[i] = (*tmp_forces_)[i];
+    for (int i = 0; i < tmp_forces_.size(); i++){
+        *forces_[i] = tmp_forces_[i];
     }
 }
 
-    TactileSensorReal::TactileSensorReal(ros::NodeHandle& nh, std::shared_ptr<std::vector<float>> forces) : TactileSensorBase(nh, forces, false) {}
+TactileSensorReal::TactileSensorReal(ros::NodeHandle& nh, std::vector<std::shared_ptr<float>> forces) : TactileSensorBase(nh, forces, false) {}
 }
 
 #endif  // TA11_CONTROLLER_TACTILE_SENSOR_IMPL_H
