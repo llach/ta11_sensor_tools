@@ -58,12 +58,27 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
     // get numbers of joints
     num_sensors_ = joints_.size();
 
+    ROS_INFO_NAMED(name_, "reloading action server ...");
+    action_server_.reset(new ActionServer(controller_nh_, "follow_joint_trajectory",
+                                          boost::bind(&TA11TrajectoryController::goalCB,   this, _1),
+                                          boost::bind(&TA11TrajectoryController::cancelCB, this, _1),
+                                          false));
+    action_server_->start();
+
+    for (int i=0; i<joint_names_.size(); i++){
+      ROS_INFO_STREAM_NAMED(name_, "joint_name[" << i << "] = " << joint_names_[i]);
+    }
+
+    joint_times_.resize(num_sensors_);
+
+//    sensors_ = std::make_shared<TactileSensors>(root_nh, forces_);
+
 //  max_forces_= std::make_shared<std::vector<float>>(num_sensors_, 1.0);
 //  k_= std::make_shared<std::vector<float>>(num_sensors_, 850.0);
 
     debug_pub_ = root_nh.advertise<tiago_tactile_msgs::TA11Debug>("/ta11_debug", 1);
 
-    ROS_INFO_NAMED(name_, "regitering dynamic reconfigure server ...");
+    ROS_INFO_NAMED(name_, "registering dynamic reconfigure server ...");
     f_ = boost::bind(&TA11TrajectoryController<TactileSensors>::dr_callback, this, _1, _2);
     server_.setCallback(f_);
 
@@ -96,54 +111,6 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
 //    }
 //    return true;
 //}
-
-template <class TactileSensors>
-inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
-    tiago_tactile_msgs::TA11Debug dbg_msg = tiago_tactile_msgs::TA11Debug();
-//    dbg_msg.header.stamp = ros::Time::now();
-//
-//    dbg_msg.k = {(*k_)[0], (*k_)[1]};
-//    dbg_msg.f = {(*forces_)[0], (*forces_)[1]};
-//    dbg_msg.p = {current_state_.position[0], current_state_.position[1]};
-//    dbg_msg.delta_F = {(*delta_F_)[0], (*delta_F_)[1]};
-//    dbg_msg.delta_p = {(*delta_p_)[0], (*delta_p_)[1]};
-//    dbg_msg.delta_p_T = {(*delta_p_T_)[0], (*delta_p_T_)[1]};
-//    dbg_msg.p_T = {(*pos_T_)[0], (*pos_T_)[1]};
-//
-//    dbg_msg.delta_p_force = {(*delta_p_force_)[0], (*delta_p_force_)[1]};
-//    dbg_msg.delta_p_vel = {(*delta_p_vel_)[0], (*delta_p_vel_)[1]};
-//
-//    dbg_msg.noise_treshold = {-NOISE_THRESH, NOISE_THRESH};
-//    dbg_msg.max_forces = {-(*max_forces_)[0], (*max_forces_)[1]};
-//
-//    dbg_msg.error_integral = {(*error_integral_)[0], (*error_integral_)[1]};
-//    dbg_msg.f_error_integral = f_error_integral_;
-//
-//    dbg_msg.c_state = c_state_;
-//
-//    dbg_msg.des_vel = {(*des_vel_)[0], (*des_vel_)[1]};
-//
-//    dbg_msg.vel_limit = vel_limit_;
-//
-//    for (auto& j : sensor_states_)
-//      dbg_msg.joint_states.push_back(j);
-
-    debug_pub_.publish(dbg_msg);
-}
-
-template <class TactileSensors>
-inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controller::TA11ControllerDRConfig &config, uint32_t level) {
-  ROS_INFO("Reconfigure Request:\n\tmax_forces: %f\n\tlambda: %f\n\tk: %d\n\tK_i: %f",
-          config.max_force_thresh, config.lambda, config.init_k,
-          config.k_i);
-//  max_forces_= std::make_shared<std::vector<float>>(num_sensors_, config.max_force_thresh);
-//  init_k_= config.init_k;
-//  lambda_ = config.lambda;
-//  goal_maintain_ = config.goal_maintain;
-//  K_i_ = config.k_i;
-//  K_p_ = config.k_p;
-}
-
 
 template <class TactileSensors>
 inline void TA11TrajectoryController<TactileSensors>::cancelCB(GoalHandle gh) {
@@ -217,6 +184,53 @@ inline void TA11TrajectoryController<TactileSensors>::goalCB(GoalHandle gh) {
     gh.setRejected(result);
   }
 }
+
+    template <class TactileSensors>
+    inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
+      tiago_tactile_msgs::TA11Debug dbg_msg = tiago_tactile_msgs::TA11Debug();
+//    dbg_msg.header.stamp = ros::Time::now();
+//
+//    dbg_msg.k = {(*k_)[0], (*k_)[1]};
+//    dbg_msg.f = {(*forces_)[0], (*forces_)[1]};
+//    dbg_msg.p = {current_state_.position[0], current_state_.position[1]};
+//    dbg_msg.delta_F = {(*delta_F_)[0], (*delta_F_)[1]};
+//    dbg_msg.delta_p = {(*delta_p_)[0], (*delta_p_)[1]};
+//    dbg_msg.delta_p_T = {(*delta_p_T_)[0], (*delta_p_T_)[1]};
+//    dbg_msg.p_T = {(*pos_T_)[0], (*pos_T_)[1]};
+//
+//    dbg_msg.delta_p_force = {(*delta_p_force_)[0], (*delta_p_force_)[1]};
+//    dbg_msg.delta_p_vel = {(*delta_p_vel_)[0], (*delta_p_vel_)[1]};
+//
+//    dbg_msg.noise_treshold = {-NOISE_THRESH, NOISE_THRESH};
+//    dbg_msg.max_forces = {-(*max_forces_)[0], (*max_forces_)[1]};
+//
+//    dbg_msg.error_integral = {(*error_integral_)[0], (*error_integral_)[1]};
+//    dbg_msg.f_error_integral = f_error_integral_;
+//
+//    dbg_msg.c_state = c_state_;
+//
+//    dbg_msg.des_vel = {(*des_vel_)[0], (*des_vel_)[1]};
+//
+//    dbg_msg.vel_limit = vel_limit_;
+//
+//    for (auto& j : sensor_states_)
+//      dbg_msg.joint_states.push_back(j);
+
+      debug_pub_.publish(dbg_msg);
+    }
+
+    template <class TactileSensors>
+    inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controller::TA11ControllerDRConfig &config, uint32_t level) {
+      ROS_INFO("Reconfigure Request:\n\tmax_forces: %f\n\tlambda: %f\n\tk: %d\n\tK_i: %f",
+               config.max_force_thresh, config.lambda, config.init_k,
+               config.k_i);
+//  max_forces_= std::make_shared<std::vector<float>>(num_sensors_, config.max_force_thresh);
+//  init_k_= config.init_k;
+//  lambda_ = config.lambda;
+//  goal_maintain_ = config.goal_maintain;
+//  K_i_ = config.k_i;
+//  K_p_ = config.k_p;
+    }
 
 }
 

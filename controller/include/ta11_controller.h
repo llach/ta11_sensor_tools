@@ -72,6 +72,16 @@ protected:
     void dr_callback(ta11_controller::TA11ControllerDRConfig &config, uint32_t level);
 
     int num_sensors_ = 0;
+
+    bool realtime_busy_ = false;
+
+    ros::Time curr_time_;
+
+    typedef std::shared_ptr<TactileSensors> TactileSensorsPtr;
+    TactileSensorsPtr sensors_;
+
+    // sample times for joints
+    std::vector<ros::Time> joint_times_;
 };
 
 }
