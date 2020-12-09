@@ -95,6 +95,8 @@ protected:
     // Force Controller parameters
     double NOISE_THRESH = 0.25;
 
+    double target_force = 2.2;
+
     double init_k_ = 875;
 
     double min_vel_ = 0.01;

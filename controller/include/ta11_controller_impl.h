@@ -176,8 +176,6 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
       if (state_ == fcc::CONTROLLER_STATE::FORCE_CTRL) {
         ROS_INFO_NAMED(name_ + ".force_control", "in force control");
 
-        jfc_[i].calculate(current_state_.position[i], desired_state_.position[i], period.toSec());
-
         desired_joint_state_.position[0] = jfc_[i].get_p_des();
         desired_joint_state_.velocity[0] = jfc_[i].get_v_des();
       } else {
@@ -463,33 +461,35 @@ inline bool TA11TrajectoryController<TactileSensors>::check_finished() {
 template <class TactileSensors>
 inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
   tiago_tactile_msgs::TA11Debug dbg_msg = tiago_tactile_msgs::TA11Debug();
-//    dbg_msg.header.stamp = ros::Time::now();
-//
-//    dbg_msg.k = {(*k_)[0], (*k_)[1]};
-//    dbg_msg.f = {(*forces_)[0], (*forces_)[1]};
-//    dbg_msg.p = {current_state_.position[0], current_state_.position[1]};
-//    dbg_msg.delta_F = {(*delta_F_)[0], (*delta_F_)[1]};
-//    dbg_msg.delta_p = {(*delta_p_)[0], (*delta_p_)[1]};
-//    dbg_msg.delta_p_T = {(*delta_p_T_)[0], (*delta_p_T_)[1]};
-//    dbg_msg.p_T = {(*pos_T_)[0], (*pos_T_)[1]};
-//
-//    dbg_msg.delta_p_force = {(*delta_p_force_)[0], (*delta_p_force_)[1]};
-//    dbg_msg.delta_p_vel = {(*delta_p_vel_)[0], (*delta_p_vel_)[1]};
-//
-//    dbg_msg.noise_treshold = {-NOISE_THRESH, NOISE_THRESH};
-//    dbg_msg.max_forces = {-(*max_forces_)[0], (*max_forces_)[1]};
-//
-//    dbg_msg.error_integral = {(*error_integral_)[0], (*error_integral_)[1]};
-//    dbg_msg.f_error_integral = f_error_integral_;
-//
-//    dbg_msg.c_state = c_state_;
-//
-//    dbg_msg.des_vel = {(*des_vel_)[0], (*des_vel_)[1]};
-//
-//    dbg_msg.vel_limit = vel_limit_;
-//
-//    for (auto& j : sensor_states_)
-//      dbg_msg.joint_states.push_back(j);
+  dbg_msg.header.stamp = ros::Time::now();
+
+  for (auto& fc : jfc_){
+    dbg_msg.k.push_back(fc.k_);
+    dbg_msg.f.push_back(*fc.force_);
+    dbg_msg.p.push_back(fc.p_);
+
+    dbg_msg.delta_F.push_back(fc.delta_F_);
+    dbg_msg.delta_p.push_back(fc.delta_p_);
+    dbg_msg.delta_p_T.push_back(fc.delta_p_T_);
+
+    dbg_msg.delta_p_force.push_back(fc.delta_p_force_);
+    dbg_msg.delta_p_vel.push_back(fc.delta_p_vel_);
+
+    dbg_msg.p_T.push_back(fc.p_T_);
+
+    dbg_msg.v_des.push_back(fc.v_des_);
+
+    dbg_msg.joint_states.push_back(fc.sensor_state_);
+
+    dbg_msg.error_integral.push_back(fc.error_integral_);
+    dbg_msg.f_error_integral.push_back(fc.f_error_integral_);
+  }
+
+  dbg_msg.max_forces = {-jfc_[0].target_force_, jfc_[1].target_force_};
+  dbg_msg.noise_treshold = {-NOISE_THRESH, NOISE_THRESH};
+
+  dbg_msg.c_state = state_;
+  dbg_msg.vel_limit = jfc_[0].vel_limit_;
 
   debug_pub_.publish(dbg_msg);
 }
