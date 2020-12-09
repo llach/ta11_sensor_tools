@@ -115,12 +115,14 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
     dbg_msg.noise_treshold = {-NOISE_THRESH, NOISE_THRESH};
     dbg_msg.max_forces = {-(*max_forces_)[0], (*max_forces_)[1]};
 
+    dbg_msg.error_integral = {(*error_integral_)[0], (*error_integral_)[1]};
+    dbg_msg.f_error_integral = f_error_integral_;
+
     dbg_msg.c_state = c_state_;
 
     dbg_msg.des_vel = {(*des_vel_)[0], (*des_vel_)[1]};
 
     dbg_msg.vel_limit = vel_limit_;
-    dbg_msg.error_integral = error_integral_;
 
     for (auto& j : sensor_states_)
       dbg_msg.joint_states.push_back(j);
