@@ -39,7 +39,6 @@
 #define TA11_CONTROLLER_TA11_CONTROLLER_H
 
 #include <tiago_tactile_msgs/TA11Debug.h>
-#include <force_controller_core/force_controller.h>
 #include <joint_trajectory_controller/joint_trajectory_controller.h>
 #include <trajectory_interface/quintic_spline_segment.h>
 
@@ -52,26 +51,27 @@ namespace ta11_controller {
 
 template <class TactileSensors>
 class TA11TrajectoryController
-: public force_controller::ForceTrajectoryController<TactileSensors>
+: public joint_trajectory_controller::JointTrajectoryController<trajectory_interface::QuinticSplineSegment<double>,
+        hardware_interface::PositionJointInterface>
 {
-    // JTC overrides
-	bool init(hardware_interface::PositionJointInterface* hw, ros::NodeHandle& root_nh,
-	          ros::NodeHandle& controller_nh) override;
-
-	// FTC overrides
-    void update_sensors() override;
-    bool check_controller_transition() override;
-	  void publish_debug_info() override;
-    bool check_finished() override;
+    void goalCB(GoalHandle gh) override;
+    void cancelCB(GoalHandle gh) override;
+//    void update(const ros::Time& time, const ros::Duration& period) override;
 
 protected:
-    #include "force_controller_core/easy_include_fc.h"
+    void reset_parameters();
+    void publish_debug_info();
+
+    bool init(hardware_interface::PositionJointInterface* hw, ros::NodeHandle& root_nh,
+              ros::NodeHandle& controller_nh) override;
 
     ros::Publisher debug_pub_;
     dynamic_reconfigure::Server<ta11_controller::TA11ControllerDRConfig> server_;
     dynamic_reconfigure::Server<ta11_controller::TA11ControllerDRConfig>::CallbackType f_;
 
     void dr_callback(ta11_controller::TA11ControllerDRConfig &config, uint32_t level);
+
+    int num_sensors_ = 0;
 };
 
 }
