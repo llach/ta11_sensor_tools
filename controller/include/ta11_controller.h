@@ -38,13 +38,13 @@
 #ifndef TA11_CONTROLLER_TA11_CONTROLLER_H
 #define TA11_CONTROLLER_TA11_CONTROLLER_H
 
-#include <tiago_tactile_msgs/TA11Debug.h>
 #include <joint_trajectory_controller/joint_trajectory_controller.h>
 #include <trajectory_interface/quintic_spline_segment.h>
 
 #include <joint_trajectory_controller/joint_trajectory_segment.h>
 
 #include <dynamic_reconfigure/server.h>
+#include <tiago_tactile_msgs/TA11Debug.h>
 #include <ta11_controller/TA11ControllerDRConfig.h>
 
 namespace ta11_controller {
@@ -56,7 +56,7 @@ class TA11TrajectoryController
 {
     void goalCB(GoalHandle gh) override;
     void cancelCB(GoalHandle gh) override;
-//    void update(const ros::Time& time, const ros::Duration& period) override;
+    void update(const ros::Time& time, const ros::Duration& period) override;
 
 protected:
     void reset_parameters();

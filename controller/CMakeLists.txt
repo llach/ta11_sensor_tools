@@ -14,7 +14,6 @@ find_package(catkin REQUIRED COMPONENTS
         roscpp
         tiago_tactile_msgs
         controller_interface
-        force_controller_core
         dynamic_reconfigure
         )
 
@@ -26,7 +25,6 @@ disable_pal_flags()
 
 catkin_package(
         CATKIN_DEPENDS
-        force_controller_core
         INCLUDE_DIRS include
         LIBRARIES ${PROJECT_NAME}
 )
