@@ -496,15 +496,17 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
 
 template <class TactileSensors>
 inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controller::TA11ControllerDRConfig &config, uint32_t level) {
-  ROS_INFO("Reconfigure Request:\n\tmax_forces: %f\n\tlambda: %f\n\tk: %d\n\tK_i: %f",
-           config.max_force_thresh, config.lambda, config.init_k,
-           config.k_i);
-//  max_forces_= std::make_shared<std::vector<float>>(num_sensors_, config.max_force_thresh);
-//  init_k_= config.init_k;
-//  lambda_ = config.lambda;
-//  goal_maintain_ = config.goal_maintain;
-//  K_i_ = config.k_i;
-//  K_p_ = config.k_p;
+  ROS_INFO("Reconfigure Request:\n\ttarget_force: %f\n\tk: %d\n\tK_i: %f",
+           config.target_force, config.init_k, config.k_i);
+
+  goal_maintain_ = config.goal_maintain;
+
+  for (auto& fc : jfc_){
+    fc.target_force_ = config.target_force;
+    fc.init_k_ = config.init_k;
+    fc.K_i_ = config.k_i;
+    fc.K_p_ = config.k_p;
+  }
 }
 
 }
