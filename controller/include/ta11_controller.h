@@ -64,6 +64,7 @@ protected:
     bool init(hardware_interface::PositionJointInterface* hw, ros::NodeHandle& root_nh,
               ros::NodeHandle& controller_nh) override;
 
+    bool check_finished();
     void reset_parameters();
     void publish_debug_info();
     bool check_controller_transition();
@@ -77,6 +78,8 @@ protected:
     int num_sensors_ = 0;
 
     bool realtime_busy_ = false;
+
+    bool goal_maintain_ = false;
 
     ros::Time curr_time_;
 

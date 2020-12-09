@@ -209,7 +209,7 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
       state_error_.acceleration[i] = 0.0;
 
       // Check tolerances
-      if (true) { // => Trajectory Execution || NOTE this might cause non terminating controller if case 2
+      if (state_ != fcc::CONTROLLER_STATE::FORCE_CTRL) { // => Trajectory Execution || NOTE this might cause non terminating controller if case 2
         const RealtimeGoalHandlePtr rt_segment_goal = segment_it->getGoalHandle();
         if (rt_segment_goal && rt_segment_goal == rt_active_goal_) {
           // Check tolerances
@@ -223,7 +223,9 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
                 checkStateTolerancePerJoint(state_joint_error_, joint_tolerances.state_tolerance, true);
 
               }
-//            sensor_states_[i] = VIOLATED; TODO
+
+              jfc_[i].sensor_state_ = fcc::SENSOR_STATE::VIOLATED;
+
               if (rt_segment_goal && rt_segment_goal->preallocated_result_) {
                 ROS_INFO_NAMED(name_, "Trajectory execution aborted (path tolerances)");
                 rt_segment_goal->preallocated_result_->error_code =
@@ -253,12 +255,12 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
 
             if (inside_goal_tolerances) {
               successful_joint_traj_[i] = 1;
-              ROS_INFO_NAMED(name_, "Joint %d inside goal tolerances!", i);
-//            sensor_states_[i] = GOAL; TODO
+              ROS_INFO_NAMED(name_, "%s inside goal tolerances!", jfc_[i].joint_name_.c_str());
+              jfc_[i].sensor_state_ = fcc::SENSOR_STATE::GOAL;
 
-//            if (last_sensor_states_[i] != GOAL) { TODO
-//              ROS_INFO_NAMED(name_, "Joint %d inside goal tolerances!", i);
-//            }
+              if (jfc_[i].last_sensor_state_ != fcc::SENSOR_STATE::GOAL) {
+                ROS_INFO_NAMED(name_, "%s inside goal tolerances!", jfc_[i].joint_name_.c_str());
+              }
             } else if (uptime.toSec() < segment_it->endTime() + tolerances.goal_time_tolerance) {
               // Still have some time left to meet the goal state tolerances
             } else {
@@ -267,7 +269,9 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
                 // Check the tolerances one more time to output the errors that occurs
                 checkStateTolerancePerJoint(state_joint_error_, tolerances.goal_state_tolerance, true);
               }
-//            sensor_states_[i] = VIOLATED; TODO
+
+              jfc_[i].sensor_state_ = fcc::SENSOR_STATE::VIOLATED;
+
               if (rt_segment_goal) {
                 ROS_INFO_NAMED(name_, "Trajectory execution aborted (goal tolerances)");
                 rt_segment_goal->preallocated_result_->error_code =
@@ -285,7 +289,6 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     }
   }
 
-
   // If there is an active goal and all segments finished successfully then set goal as succeeded
   // current_active_goal is reused from above the state update
   if (current_active_goal && current_active_goal->preallocated_result_ &&
@@ -297,33 +300,33 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     successful_joint_traj_.reset();
     reset_parameters();
   } else if (current_active_goal && current_active_goal->preallocated_result_) {
-//    if (check_finished() && !goal_maintain_) {
-//      ROS_INFO_NAMED(name_, "Non-trajectory success");
-//
-//      for (unsigned int i = 0; i < joints_.size(); ++i) {
-//        ROS_INFO_NAMED(name_, "Setting joint %d to %f", i, current_state_.position[i]); // TODO or hold_state()?
-//        desired_state_.position[i] = current_state_.position[i];
-//        desired_state_.velocity[i] = current_state_.velocity[i];
-//        desired_state_.acceleration[i] = current_state_.acceleration[i];
-//
-//        state_joint_error_.position[0] = 0.0;
-//        state_joint_error_.velocity[0] = 0.0;
-//        state_joint_error_.acceleration[0] = 0.0;
-//
-//        state_error_.position[i] = 0.0;
-//        state_error_.velocity[i] = 0.0;
-//        state_error_.acceleration[i] = 0.0;
-//      }
-//
-//      current_active_goal->preallocated_result_->error_code = control_msgs::FollowJointTrajectoryResult::SUCCESSFUL;
-//      current_active_goal->setSucceeded(current_active_goal->preallocated_result_);
-//      rt_active_goal_.reset();
-//      successful_joint_traj_.reset();
-//      reset_parameters();
-//
-//      // Hold current position
-//      setHoldPosition(time_data.uptime);
-//    }
+    if (check_finished() && !goal_maintain_) {
+      ROS_INFO_NAMED(name_, "Non-trajectory success");
+
+      for (unsigned int i = 0; i < joints_.size(); ++i) {
+        ROS_INFO_NAMED(name_, "Setting joint %s to %f", jfc_[i].joint_name_.c_str(), current_state_.position[i]); // TODO or hold_state()?
+        desired_state_.position[i] = current_state_.position[i];
+        desired_state_.velocity[i] = current_state_.velocity[i];
+        desired_state_.acceleration[i] = current_state_.acceleration[i];
+
+        state_joint_error_.position[i] = 0.0;
+        state_joint_error_.velocity[i] = 0.0;
+        state_joint_error_.acceleration[i] = 0.0;
+
+        state_error_.position[i] = 0.0;
+        state_error_.velocity[i] = 0.0;
+        state_error_.acceleration[i] = 0.0;
+      }
+
+      current_active_goal->preallocated_result_->error_code = control_msgs::FollowJointTrajectoryResult::SUCCESSFUL;
+      current_active_goal->setSucceeded(current_active_goal->preallocated_result_);
+      rt_active_goal_.reset();
+      successful_joint_traj_.reset();
+      reset_parameters();
+
+      // Hold current position
+      setHoldPosition(time_data.uptime);
+    }
   }
 
   // Hardware interface adapter: Generate and send commands
@@ -343,24 +346,10 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
 
   }
 
-//  for (int j = 0; j < des_vel_->size(); j++){
-//    if (period.toSec() == 0.0){
-//      (*des_vel_)[j] = 0.0;
-//    } else {
-//      (*des_vel_)[j] = (desired_state_.position[j] - (*last_des_p_)[j]) / period.toSec();
-//    }
-//  }
-//
-//  publish_debug_info();
-//
-//  /*
-//   * Store data for next loop & cleanup.
-//   */
-//  for (int j = 0; j < forces_->size(); j++){
-//    (*last_forces_)[j] = (*forces_)[j];
-//    last_sensor_states_[j] = sensor_states_[j];
-//    (*last_des_p_)[j] = desired_state_.position[j];
-//  }
+  for(auto& fc : jfc_)
+    fc.finish_iteration();
+
+  publish_debug_info();
 
   // Publish state
   publishState(time_data.uptime);
@@ -457,21 +446,19 @@ inline bool TA11TrajectoryController<TactileSensors>::check_controller_transitio
     }
     return true;
 }
-//
-//template <class TactileSensors>
-//inline bool TA11TrajectoryController<TactileSensors>::check_finished() {
-//    for (int l = 0; l < num_sensors_; l++){
-//      if(sensor_states_[l] == GOAL){
-//        ROS_INFO_THROTTLE_NAMED(1, name_, "Sensor %d is already in goal", l);
-//        continue;
-//      }
-//      if (std::abs((*forces_)[l]) < (*max_forces_)[l])
-//          return false;
-//    }
-//    return true;
-//}
 
-
+template <class TactileSensors>
+inline bool TA11TrajectoryController<TactileSensors>::check_finished() {
+    for (auto& fc : jfc_){
+      if(fc.sensor_state_ == fcc::SENSOR_STATE::GOAL){
+        ROS_INFO_THROTTLE_NAMED(1, name_, "%s is already in goal", fc.joint_name_.c_str());
+        continue;
+      }
+      if (std::abs(*fc.force_) < fc.target_force_)
+          return false;
+    }
+    return true;
+}
 
 template <class TactileSensors>
 inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
