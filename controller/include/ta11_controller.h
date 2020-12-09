@@ -84,22 +84,22 @@ protected:
     TactileSensorsPtr sensors_;
 
     // pointer to force vector. Written to by TactileSensors and read by ForceController
-    std::vector<std::shared_ptr<float>> forces_;
+    std::vector<std::shared_ptr<double>> forces_;
 
     // list of joint-level force controllers
     std::vector<fcc::JointForceController> jfc_;
 
     // Force Controller parameters
-    float NOISE_THRESH = 0.25;
+    double NOISE_THRESH = 0.25;
 
-    float init_k_ = 875;
+    double init_k_ = 875;
 
-    float min_vel_ = 0.01;
+    double min_vel_ = 0.01;
 
-    float K_p_ = 5;
-    float K_i_ = 0.001;
+    double K_p_ = 5;
+    double K_i_ = 0.001;
 
-    float max_error_int_ = 1.1;
+    double max_error_int_ = 1.1;
     int f_error_window_ = 200;
 
     // indicates whether we are executing the trajectory, doing force control or are in transition between the two

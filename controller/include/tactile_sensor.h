@@ -44,22 +44,22 @@
 namespace ta11_controller {
 class TactileSensorBase {
 public:
-    TactileSensorBase(ros::NodeHandle& root_nh, std::vector<std::shared_ptr<float>> forces, bool simulation);
+    TactileSensorBase(ros::NodeHandle& root_nh, std::vector<std::shared_ptr<double>> forces, bool simulation);
     virtual void update() {};
 
     bool sim = false;
 protected:
     ros::NodeHandle& nh_;
 
-    std::vector<float> tmp_forces_;
-    std::vector<std::shared_ptr<float>> forces_;
+    std::vector<double> tmp_forces_;
+    std::vector<std::shared_ptr<double>> forces_;
 };
 
 // listens to topic for simulation use
 class TactileSensorSub : public TactileSensorBase
 {
 public:
-    TactileSensorSub(ros::NodeHandle& root_nh, std::vector<std::shared_ptr<float>> forces);
+    TactileSensorSub(ros::NodeHandle& root_nh, std::vector<std::shared_ptr<double>> forces);
     void update() override;
 private:
     ros::Subscriber sub_;
@@ -70,7 +70,7 @@ private:
 class TactileSensorReal : public TactileSensorBase
 {
 public:
-	TactileSensorReal(ros::NodeHandle& root_nh, std::vector<std::shared_ptr<float>> forces);
+	TactileSensorReal(ros::NodeHandle& root_nh, std::vector<std::shared_ptr<double>> forces);
 };
 }
 

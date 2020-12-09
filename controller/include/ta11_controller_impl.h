@@ -68,7 +68,7 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
     for (int i=0; i<joint_names_.size(); i++){
       ROS_INFO_STREAM_NAMED(name_, "joint_name[" << i << "] = " << joint_names_[i]);
 
-      std::shared_ptr<float> fp = std::make_shared<float>(0.0);
+      std::shared_ptr<double> fp = std::make_shared<double>(0.0);
       fcc::JointForceController jfc(joint_names_[i],
                                     fp,
                                     0.25, // force threshold
@@ -165,72 +165,24 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     // if we were to revert back to trajectory mode, here is the place to do so
   }
 
-
-//  vel_limit_ = 0;
-
     // Update desired state and state error
     for (unsigned int i = 0; i < joints_.size(); ++i) {
 
+      // There's no acceleration data available in a joint handle
       current_state_.position[i] = joints_[i].getPosition();
       current_state_.velocity[i] = joints_[i].getVelocity();
-      // There's no acceleration data available in a joint handle
-
-//      float state_err = current_state_.position[i] - desired_state_.position[i];
 
       typename TrajectoryPerJoint::const_iterator segment_it;
-      if (false) {
-//    if (c_state_ > TRANSITION) {
-//      ROS_INFO_STREAM_NAMED(name_, "IN FC " << i);
-//
-//      // prevent integral from exploding
-//      if ((*error_integral_)[i] < max_error_int_){
-//        (*error_integral_)[i] += state_err;
-//      }
-//
-//      (*delta_p_T_)[i] = ((*pos_T_)[i] - current_state_.position[i]);
-//
-//      // estimate k
-////                double k_bar_t = (*forces_)[i] / (*delta_p_T_)[i];
-////                k_bar_t = std::max(k_bar_t, 10000.0);
-//
-////                if (!std::isinf(k_bar_t)){
-////                    (*k_)[i] = lambda_*k_bar_t + (1-lambda_)*(*k_)[i];
-////                }
-//
-//      // calculate new desired position
-//      double f_des = (*max_forces_)[i] - std::abs((*forces_)[i]);
-//      double delta_p_force = (f_des / (*k_)[i]);
-//      (*delta_F_)[i] = f_des;
-//
-//      if (f_error_queue_.size() > f_error_window_)
-//        f_error_queue_.pop_back();
-//
-//      f_error_queue_.push_front(delta_p_force);
-//      f_error_integral_ = std::accumulate(f_error_queue_.begin(), f_error_queue_.end(), 0.0);
-//
-//      // --> use PI[D] controller here
-//      double delta_p_max = K_p_ * (min_vel_ * period.toSec());
-//      delta_p_max += K_i_ * (*error_integral_)[i];
-//
-//      // enforce velocity limits
-//      if (std::abs(delta_p_force) > std::abs(delta_p_max)){
-//        vel_limit_ = 1;
-//        (*delta_p_)[i] = delta_p_max;
-//      } else {
-//        (*delta_p_)[i] = delta_p_force;
-//      }
-//
-//      // calculate new position and velocity
-//      desired_joint_state_.position[0] = current_state_.position[i] - (*delta_p_)[i];
-//      desired_joint_state_.velocity[0] = (desired_joint_state_.position[0] - (*last_des_p_)[i]) / period.toSec();
-//
-//      // store debug info
-//      (*delta_p_vel_)[i] = std::abs(delta_p_max);
-//      (*delta_p_force_)[i] = std::abs(delta_p_force);
+      if (state_ == fcc::CONTROLLER_STATE::FORCE_CTRL) {
+        ROS_INFO_NAMED(name_ + ".force_control", "in force control");
 
+        jfc_[i].calculate(current_state_.position[i], desired_state_.position[i], period.toSec());
+
+        desired_joint_state_.position[0] = jfc_[i].get_p_des();
+        desired_joint_state_.velocity[0] = jfc_[i].get_v_des();
       } else {
         segment_it =
-                sample(curr_traj[i], time_data.uptime.toSec(), desired_joint_state_); // todo use joint_times_
+                sample(curr_traj[i], jfc_[i].joint_time_, desired_joint_state_);
         if (curr_traj[i].end() == segment_it) {
           // Non-realtime safe, but should never happen under normal operation
           ROS_ERROR_NAMED(
@@ -257,7 +209,7 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
       state_error_.acceleration[i] = 0.0;
 
       // Check tolerances
-      if (true) { // => Trajectory Execution || TODO this might cause non terminating controller if case 2 SHOULD ONLY BE NOT IN FORCE
+      if (true) { // => Trajectory Execution || NOTE this might cause non terminating controller if case 2
         const RealtimeGoalHandlePtr rt_segment_goal = segment_it->getGoalHandle();
         if (rt_segment_goal && rt_segment_goal == rt_active_goal_) {
           // Check tolerances
