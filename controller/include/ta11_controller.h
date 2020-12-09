@@ -61,11 +61,12 @@ class TA11TrajectoryController
     void update(const ros::Time& time, const ros::Duration& period) override;
 
 protected:
-    void reset_parameters();
-    void publish_debug_info();
-
     bool init(hardware_interface::PositionJointInterface* hw, ros::NodeHandle& root_nh,
               ros::NodeHandle& controller_nh) override;
+
+    void reset_parameters();
+    void publish_debug_info();
+    bool check_controller_transition();
 
     ros::Publisher debug_pub_;
     dynamic_reconfigure::Server<ta11_controller::TA11ControllerDRConfig> server_;
@@ -100,6 +101,9 @@ protected:
 
     float max_error_int_ = 1.1;
     int f_error_window_ = 200;
+
+    // indicates whether we are executing the trajectory, doing force control or are in transition between the two
+    fcc::CONTROLLER_STATE state_;
 };
 
 }

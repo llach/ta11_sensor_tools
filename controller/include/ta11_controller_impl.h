@@ -98,29 +98,6 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
   return ret;
 }
 
-//template <class TactileSensors>
-//inline bool TA11TrajectoryController<TactileSensors>::check_controller_transition() {
-//    for (auto& ss : sensor_states_){
-//        if (ss < GOT_CONTACT || ss >= GOAL)
-//            return false;
-//    }
-//    return true;
-//}
-//
-//template <class TactileSensors>
-//inline bool TA11TrajectoryController<TactileSensors>::check_finished() {
-//    for (int l = 0; l < num_sensors_; l++){
-//      if(sensor_states_[l] == GOAL){
-//        ROS_INFO_THROTTLE_NAMED(1, name_, "Sensor %d is already in goal", l);
-//        continue;
-//      }
-//      if (std::abs((*forces_)[l]) < (*max_forces_)[l])
-//          return false;
-//    }
-//    return true;
-//}
-
-
 template <class TactileSensors>
 inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& time, const ros::Duration& period) {
 
@@ -157,60 +134,38 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
   RealtimeGoalHandlePtr current_active_goal(rt_active_goal_);
   if (current_active_goal) {
 
-//    for (int j = 0; j < forces_->size(); j++) {
-//      auto &force = (*forces_)[j];
-//      auto &last_force = (*last_forces_)[j];
-//      auto &state = sensor_states_[j];
-//      auto &last_state = last_sensor_states_[j]; // debug purposes only, not used in logic
-//      auto &joint_time = joint_times_[j];
-//
-//      if (state < GOAL) { // if a joint has reached it's goal, we don't change states anymore
-//        if (std::abs(last_force) <= NOISE_THRESH && std::abs(force) > NOISE_THRESH) {
-//          state = GOT_CONTACT;
-//        } else if (std::abs(last_force) > NOISE_THRESH && std::abs(force) <= NOISE_THRESH) {
-//          state = LOST_CONTACT;
-//        } else if (std::abs(last_force) > NOISE_THRESH && std::abs(force) > NOISE_THRESH) {
-//          state = IN_CONTACT;
-//        } else {
-//          state = NO_CONTACT;
-//        }
-//
-//        // no contact -> do trajectory sampling.
-//        if (state <= LOST_CONTACT) {
-//          // TODO proceeding like this could cause jerking joints. better: find joint_t which is closest to current joint_val and continue from there
-//          joint_time += period;
-//        }
-//      }
-//
-//      ROS_DEBUG_NAMED(name_ + ".sensorState",
-//                      "Sensor %d has state %s with force %.4f", j, m_statestring_[state].c_str(), force);
-//
-//      if (state != last_state) {
-//        ROS_INFO_NAMED(name_ + ".sensorStateChange",
-//                       "Sensor %d's state changed from %s to %s. f_t-1 %.4f, f_t %.4f", j,
-//                       m_statestring_[last_state].c_str(), m_statestring_[state].c_str(), last_force, force);
-//      }
-//    }
-//
-//    // update controller state
-//    if (c_state_ == TRANSITION) {
-//      // if the transition was detected last time, we enter force_control from here onwards
-//      c_state_ = FORCE_CTRL;
-//    } else if (c_state_ == TRAJECTORY_EXEC) {
-//      if (check_controller_transition()) { // handled in child
-//        ROS_INFO_NAMED(name_, "C TRANSITION!");
-//        c_state_ = TRANSITION;
-//
-//        // Store reference data.
-//        for (int j = 0; j < forces_->size(); j++){
-//          (*forces_T_)[j] = (*forces_)[j];
-//          (*pos_T_)[j] = current_state_.position[j];
-//        }
-//      }
-//      // if we were to revert back to trajectory mode, here is the place to do so
-//    }
-//  }
-//
+  // update joint state changes and report them
+  for (auto& fc : jfc_) {
+    fc.update_joint_states(period.toSec());
+
+    ROS_DEBUG_NAMED(name_ + ".sensorState",
+                    "%s has state %s with force %.4f", fc.joint_name_.c_str(), fcc::STATE_STRING[fc.sensor_state_].c_str(), *fc.force_);
+
+    if (fc.sensor_state_ != fc.last_sensor_state_) {
+      ROS_INFO_NAMED(name_ + ".sensorStateChange",
+                     "%s's state changed from %s to %s. f_t-1 %.4f, f_t %.4f", fc.joint_name_.c_str(),
+                     fcc::STATE_STRING[fc.last_sensor_state_].c_str(), fcc::STATE_STRING[fc.sensor_state_].c_str(),
+                     fc.last_force_, *fc.force_);
+    }
+  }
+
+  // update controller state
+  if (state_ == fcc::CONTROLLER_STATE::TRANSITION) {
+    // if the transition was detected last time, we enter force_control from here onwards
+    state_ = fcc::CONTROLLER_STATE::FORCE_CTRL;
+  } else if (state_ == fcc::CONTROLLER_STATE::TRAJECTORY_EXEC) {
+    if (check_controller_transition()) {
+      ROS_INFO_NAMED(name_, "CONTROLLER TRANSITION");
+      state_ = fcc::CONTROLLER_STATE::TRANSITION;
+
+      // Store reference data.
+      for (auto& fc : jfc_)
+        fc.on_transition();
+    }
+    // if we were to revert back to trajectory mode, here is the place to do so
+  }
+
+
 //  vel_limit_ = 0;
 
     // Update desired state and state error
@@ -534,7 +489,37 @@ inline void TA11TrajectoryController<TactileSensors>::goalCB(GoalHandle gh) {
 }
 
 template <class TactileSensors>
-inline void TA11TrajectoryController<TactileSensors>::reset_parameters() {}
+inline void TA11TrajectoryController<TactileSensors>::reset_parameters() {
+  ROS_INFO_NAMED(name_, "resetting force control parameters");
+
+  state_ = fcc::CONTROLLER_STATE::TRAJECTORY_EXEC;
+  for (auto& fc : jfc_)
+    fc.reset_parameters();
+}
+
+template <class TactileSensors>
+inline bool TA11TrajectoryController<TactileSensors>::check_controller_transition() {
+    for (auto& fc : jfc_){
+        if (fc.sensor_state_ != fcc::SENSOR_STATE::GOT_CONTACT)
+            return false;
+    }
+    return true;
+}
+//
+//template <class TactileSensors>
+//inline bool TA11TrajectoryController<TactileSensors>::check_finished() {
+//    for (int l = 0; l < num_sensors_; l++){
+//      if(sensor_states_[l] == GOAL){
+//        ROS_INFO_THROTTLE_NAMED(1, name_, "Sensor %d is already in goal", l);
+//        continue;
+//      }
+//      if (std::abs((*forces_)[l]) < (*max_forces_)[l])
+//          return false;
+//    }
+//    return true;
+//}
+
+
 
 template <class TactileSensors>
 inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
