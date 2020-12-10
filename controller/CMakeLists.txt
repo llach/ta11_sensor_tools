@@ -26,6 +26,7 @@ disable_pal_flags()
 
 catkin_package(
         CATKIN_DEPENDS
+        force_controller_core
         INCLUDE_DIRS include
         LIBRARIES ${PROJECT_NAME}
 )
