@@ -93,6 +93,8 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
     f_ = boost::bind(&TA11TrajectoryController<TactileSensors>::dr_callback, this, _1, _2);
     server_.setCallback(f_);
 
+    reset_parameters();
+
     ROS_INFO_NAMED(name_, "TA11 controller setup done!");
 
   return ret;
@@ -138,8 +140,8 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
   for (auto& fc : jfc_) {
     fc.update_joint_states(period.toSec());
 
-    ROS_DEBUG_NAMED(name_ + ".sensorState",
-                    "%s has state %s with force %.4f", fc.joint_name_.c_str(), fcc::STATE_STRING[fc.sensor_state_].c_str(), *fc.force_);
+//    ROS_DEBUG_NAMED(name_ + ".sensorState",
+//                    "%s has state %s with force %.4f", fc.joint_name_.c_str(), fcc::STATE_STRING[fc.sensor_state_].c_str(), *fc.force_);
 
     if (fc.sensor_state_ != fc.last_sensor_state_) {
       ROS_INFO_NAMED(name_ + ".sensorStateChange",
@@ -433,7 +435,7 @@ inline void TA11TrajectoryController<TactileSensors>::reset_parameters() {
 
   state_ = fcc::CONTROLLER_STATE::TRAJECTORY_EXEC;
   for (auto& fc : jfc_)
-    fc.reset_parameters();
+    fc.reset_parameters(time_data_.readFromRT()->uptime.toSec());
 }
 
 template <class TactileSensors>
