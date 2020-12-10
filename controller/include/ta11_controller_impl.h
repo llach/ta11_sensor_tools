@@ -176,7 +176,9 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
 
       typename TrajectoryPerJoint::const_iterator segment_it;
       if (state_ == fcc::CONTROLLER_STATE::FORCE_CTRL) {
-        ROS_INFO_NAMED(name_ + ".force_control", "in force control");
+//        ROS_INFO_NAMED(name_ + ".forceControl", "in force control");
+
+        jfc_[i].calculate(current_state_.position[i], desired_state_.position[i], period.toSec());
 
         desired_joint_state_.position[0] = jfc_[i].get_p_des();
         desired_joint_state_.velocity[0] = jfc_[i].get_v_des();
