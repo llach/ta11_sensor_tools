@@ -47,8 +47,8 @@ class TA11Test(Plugin):
     LEFT_IDX  = 1
     RIGHT_IDX = 0
 
-    FRC_THRESH = 1.5
-    FRC_MAX    = 3.0
+    FRC_THRESH = -0.27
+    FRC_MAX    = -3.0
     FRC_STEP   = 0.010
 
     J_OPEN  = 0.05
@@ -213,7 +213,7 @@ class TA11Test(Plugin):
                 if any(self.force_raise):
                     for i in range(len(self.current_force)):
                         if not self.force_raise[i]: continue
-                        self.current_force[i] = min(self.current_force[i]+self.FRC_STEP, self.FRC_MAX)
+                        self.current_force[i] = max(self.current_force[i]-self.FRC_STEP, self.FRC_MAX)
 
                 tac = TA11()
                 tac.header.frame_id = "base_link"
