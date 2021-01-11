@@ -146,7 +146,7 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     if (fc.sensor_state_ != fc.last_sensor_state_) {
       ROS_INFO_NAMED(name_ + ".sensorStateChange",
                      "%s's state changed from %s to %s. f_t-1 %.4f, f_t %.4f", fc.joint_name_.c_str(),
-                     fcc::STATE_STRING[fc.last_sensor_state_].c_str(), fcc::STATE_STRING[fc.sensor_state_].c_str(),
+                     fcc::STATE_STRING.at(fc.last_sensor_state_).c_str(), fcc::STATE_STRING.at(fc.sensor_state_).c_str(),
                      fc.last_force_, *fc.force_);
     }
   }
