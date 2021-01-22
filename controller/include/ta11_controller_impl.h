@@ -65,20 +65,22 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
                                           false));
     action_server_->start();
 
+    kill_service_ = root_nh.advertiseService(std::string("kill_force_goal"), &TA11TrajectoryController::kill_goal, this);
+
     for (int i=0; i<joint_names_.size(); i++){
       ROS_INFO_STREAM_NAMED(name_, "joint_name[" << i << "] = " << joint_names_[i]);
 
       std::shared_ptr<double> fp = std::make_shared<double>(0.0);
       fcc::JointForceController jfc(joint_names_[i],
                                     fp,
-                                    0.25, // force threshold
-                                    2.2, // target force
-                                    875, // initial k
-                                    0.01, // minimum velocity
-                                    5, // K_p
-                                    0.001, // K_i
-                                    1.1, // maximum error integral value
-                                    200 // force error integral windows length
+                                    NOISE_THRESH, // force threshold
+                                    target_force, // target force
+                                    init_k_, // initial k
+                                    min_vel_, // minimum velocity
+                                    K_p_, // K_p
+                                    K_i_, // K_i
+                                    max_error_int_, // maximum error integral value
+                                    f_error_window_ // force error integral windows length
                                     );
 
       jfc_.push_back(jfc);
@@ -138,10 +140,7 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
 
   // update joint state changes and report them
   for (auto& fc : jfc_) {
-    fc.update_joint_states(period.toSec());
-
-//    ROS_DEBUG_NAMED(name_ + ".sensorState",
-//                    "%s has state %s with force %.4f", fc.joint_name_.c_str(), fcc::STATE_STRING[fc.sensor_state_].c_str(), *fc.force_);
+    fc.update_joint_states(period.toSec(), opening_);
 
     if (fc.sensor_state_ != fc.last_sensor_state_) {
       ROS_INFO_NAMED(name_ + ".sensorStateChange",
@@ -156,7 +155,7 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     // if the transition was detected last time, we enter force_control from here onwards
     state_ = fcc::CONTROLLER_STATE::FORCE_CTRL;
   } else if (state_ == fcc::CONTROLLER_STATE::TRAJECTORY_EXEC) {
-    if (check_controller_transition()) {
+    if (check_controller_transition() && !opening_) {
       ROS_INFO_NAMED(name_, "CONTROLLER TRANSITION");
       state_ = fcc::CONTROLLER_STATE::TRANSITION;
 
@@ -414,6 +413,20 @@ inline void TA11TrajectoryController<TactileSensors>::goalCB(GoalHandle gh) {
     gh.setAccepted();
     rt_active_goal_ = rt_goal;
 
+    auto last_point = gh.getGoal()->trajectory.points.back().positions;
+
+    ROS_INFO_NAMED(name_, "Got trajectory with %d points, last one is [%f, %f]",
+            gh.getGoal()->trajectory.points.size(),
+            last_point[0], last_point[1]);
+
+    if (last_point[0] > current_state_.position[0] || last_point[1] > current_state_.position[1]) {
+        ROS_INFO_NAMED(name_, "Opening gripper");
+        opening_ = true;
+    } else {
+      ROS_INFO_NAMED(name_, "Closing gripper");
+      opening_ = false;
+    }
+
     // Setup goal status checking timer
     goal_handle_timer_ =
             controller_nh_.createTimer(action_monitor_period_, &RealtimeGoalHandle::runNonRealtime, rt_goal);
@@ -443,7 +456,7 @@ inline void TA11TrajectoryController<TactileSensors>::reset_parameters() {
 template <class TactileSensors>
 inline bool TA11TrajectoryController<TactileSensors>::check_controller_transition() {
     for (auto& fc : jfc_){
-        if (fc.sensor_state_ != fcc::SENSOR_STATE::GOT_CONTACT)
+        if (fc.sensor_state_ == fcc::SENSOR_STATE::NO_CONTACT)
             return false;
     }
     return true;
@@ -500,19 +513,32 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
 
 template <class TactileSensors>
 inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controller::TA11ControllerDRConfig &config, uint32_t level) {
-  ROS_INFO("Reconfigure Request:\n\ttarget_force: %f\n\tk: %d\n\tK_i: %f",
-           config.target_force, config.init_k, config.k_i);
+  ROS_INFO("Reconfigure Request:\n\ttarget_force: %f\n\tnoise_t: %f\n\tk: %d\n\tK_i: %f",
+           config.target_force, config.noise_t, config.init_k, config.k_i);
 
   goal_maintain_ = config.goal_maintain;
 
   for (auto& fc : jfc_){
     fc.target_force_ = config.target_force;
+    fc.noise_thresh_ = config.noise_t;
     fc.init_k_ = config.init_k;
     fc.K_i_ = config.k_i;
     fc.K_p_ = config.k_p;
   }
 }
 
+template <class TactileSensors>
+inline bool TA11TrajectoryController<TactileSensors>::kill_goal(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res){
+  RealtimeGoalHandlePtr current_active_goal(rt_active_goal_);
+
+  if (current_active_goal) {
+    ROS_INFO_NAMED(name_, "Killing current goal ...");
+    cancelCB(current_active_goal->gh_);
+  } else {
+    ROS_INFO_NAMED(name_, "No goal to kill!");
+  }
+
+}
 }
 
 #endif  // TA11_CONTROLLER_TA11_CONTROLLER_IMPL_H

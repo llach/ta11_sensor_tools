@@ -38,6 +38,8 @@
 #ifndef TA11_CONTROLLER_TA11_CONTROLLER_H
 #define TA11_CONTROLLER_TA11_CONTROLLER_H
 
+#include "std_srvs/Empty.h"
+
 #include <joint_trajectory_controller/joint_trajectory_controller.h>
 #include <trajectory_interface/quintic_spline_segment.h>
 
@@ -69,11 +71,15 @@ protected:
     void publish_debug_info();
     bool check_controller_transition();
 
+    bool kill_goal(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
+
     ros::Publisher debug_pub_;
     dynamic_reconfigure::Server<ta11_controller::TA11ControllerDRConfig> server_;
     dynamic_reconfigure::Server<ta11_controller::TA11ControllerDRConfig>::CallbackType f_;
 
     void dr_callback(ta11_controller::TA11ControllerDRConfig &config, uint32_t level);
+
+    ros::ServiceServer kill_service_;
 
     int num_sensors_ = 0;
 
@@ -93,9 +99,9 @@ protected:
     std::vector<fcc::JointForceController> jfc_;
 
     // Force Controller parameters
-    double NOISE_THRESH = 0.25;
+    double NOISE_THRESH = 0.07;
 
-    double target_force = 2.2;
+    double target_force = 1.2;
 
     double init_k_ = 875;
 
@@ -106,6 +112,8 @@ protected:
 
     double max_error_int_ = 1.1;
     int f_error_window_ = 200;
+
+    bool opening_ = false;
 
     // indicates whether we are executing the trajectory, doing force control or are in transition between the two
     fcc::CONTROLLER_STATE state_;
