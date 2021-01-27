@@ -290,6 +290,9 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     }
   }
 
+  if (opening_ && (desired_state_.position[0] < 0.01 || desired_state_.position[1] < 0.01))
+    ROS_INFO_NAMED(name_, "[%f, %f]", desired_state_.position[0], desired_state_.position[1]);
+
   // If there is an active goal and all segments finished successfully then set goal as succeeded
   // current_active_goal is reused from above the state update
   if (current_active_goal && current_active_goal->preallocated_result_ &&
@@ -409,11 +412,6 @@ inline void TA11TrajectoryController<TactileSensors>::goalCB(GoalHandle gh) {
   rt_goal->preallocated_feedback_->joint_names = joint_names_;
 
   if (update_ok) {
-    // Accept new goal
-    preemptActiveGoal();
-    gh.setAccepted();
-    rt_active_goal_ = rt_goal;
-
     auto last_point = gh.getGoal()->trajectory.points.back().positions;
 
     std::stringstream ss;
@@ -424,12 +422,22 @@ inline void TA11TrajectoryController<TactileSensors>::goalCB(GoalHandle gh) {
     ROS_INFO_NAMED(name_, "Current position: [%f, %f]", current_state_.position[0], current_state_.position[1]);
 
     if (last_point[0] > current_state_.position[0] || last_point[1] > current_state_.position[1]) {
-        ROS_INFO_NAMED(name_, "Opening gripper");
-        opening_ = true;
+      ROS_INFO_NAMED(name_, "Opening gripper");
+      opening_ = true;
+      if (state_ == fcc::FORCE_CTRL){
+        ROS_INFO_NAMED(name_, "opening during FC");
+        reset_parameters();
+      }
     } else {
       ROS_INFO_NAMED(name_, "Closing gripper");
       opening_ = false;
+      preemptActiveGoal();
     }
+
+    // Accept new goal
+
+    gh.setAccepted();
+    rt_active_goal_ = rt_goal;
 
     // Setup goal status checking timer
     goal_handle_timer_ =
@@ -521,14 +529,15 @@ template <class TactileSensors>
 inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controller::TA11ControllerDRConfig &config, uint32_t level) {
 //  ROS_INFO("Reconfigure Request:\n\ttarget_force: %f\n\tnoise_t: %f\n\tk: %d\n\tK_i: %f",
 //           config.target_force, config.noise_t, config.init_k, config.k_i);
-  ROS_INFO_NAMED(name_, "RECONFIGURE\ntarget force: %f\ngoal maintain? %d", config.target_force, config.goal_maintain);
+  ROS_INFO_NAMED(name_, "RECONFIGURE\ntarget force: %f\ngoal maintain? %d\nk: %d", config.target_force, config.goal_maintain, config.init_k);
 
   goal_maintain_ = config.goal_maintain;
 
   for (auto& fc : jfc_){
     fc.target_force_ = config.target_force;
 //    fc.noise_thresh_ = config.noise_t;
-//    fc.init_k_ = config.init_k;
+    fc.init_k_ = config.init_k;
+    fc.k_ = config.init_k;
 //    fc.K_i_ = config.k_i;
 //    fc.K_p_ = config.k_p;
   }
