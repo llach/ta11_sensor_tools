@@ -99,7 +99,7 @@ protected:
     std::vector<fcc::JointForceController> jfc_;
 
     // Force Controller parameters
-    double NOISE_THRESH = 0.07;
+    double NOISE_THRESH = 0.04;
 
     double target_force = 1.2;
 
@@ -107,8 +107,8 @@ protected:
 
     double min_vel_ = 0.01;
 
-    double K_p_ = 5;
-    double K_i_ = 0.001;
+    double K_p_ = 7;
+    double K_i_ = 0.002;
 
     double max_error_int_ = 1.1;
     int f_error_window_ = 200;
