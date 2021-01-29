@@ -71,7 +71,8 @@ protected:
     void publish_debug_info();
     bool check_controller_transition();
 
-    bool kill_goal(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
+    bool kill_goal();
+    bool kill_goal_srv(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
     ros::Publisher debug_pub_;
     dynamic_reconfigure::Server<ta11_controller::TA11ControllerDRConfig> server_;
