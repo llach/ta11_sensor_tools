@@ -531,7 +531,8 @@ template <class TactileSensors>
 inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controller::TA11ControllerDRConfig &config, uint32_t level) {
 //  ROS_INFO("Reconfigure Request:\n\ttarget_force: %f\n\tnoise_t: %f\n\tk: %d\n\tK_i: %f",
 //           config.target_force, config.noise_t, config.init_k, config.k_i);
-  ROS_INFO_NAMED(name_, "RECONFIGURE\ntarget force: %f\ngoal maintain? %d\nk: %d", config.target_force, config.goal_maintain, config.init_k);
+  ROS_INFO_NAMED(name_, "RECONFIGURE\ntarget force: %f\ngoal maintain? %d\nk: %d\nnoise_t: %f",
+          config.target_force, config.goal_maintain, config.init_k, config.noise_t);
 
   goal_maintain_ = config.goal_maintain;
 
@@ -539,6 +540,7 @@ inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controlle
     fc.target_force_ = config.target_force;
     fc.init_k_ = config.init_k;
     fc.k_ = config.init_k;
+    fc.noise_thresh_ = config.noise_t;
   }
 }
 
