@@ -519,7 +519,7 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
   }
 
   dbg_msg.max_forces = {-jfc_[0].target_force_, jfc_[1].target_force_};
-  dbg_msg.noise_treshold = {-NOISE_THRESH, NOISE_THRESH};
+  dbg_msg.noise_treshold = {-jfc_[0].noise_thresh_, jfc_[1].noise_thresh_};
 
   dbg_msg.c_state = state_;
   dbg_msg.vel_limit = jfc_[0].vel_limit_;
