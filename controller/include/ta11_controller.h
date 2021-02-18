@@ -106,9 +106,9 @@ protected:
 
     double init_k_ = 875;
 
-    double min_vel_ = 0.01;
+    double max_vel_ = 0.01;
 
-    double K_p_ = 7;
+    double K_p_ = 1;
     double K_i_ = 0.002;
 
     double max_error_int_ = 1.1;

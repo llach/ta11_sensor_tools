@@ -76,7 +76,7 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
                                     NOISE_THRESH, // force threshold
                                     target_force, // target force
                                     init_k_, // initial k
-                                    min_vel_, // minimum velocity
+                                    max_vel_, // maximum velocity
                                     K_p_, // K_p
                                     K_i_, // K_i
                                     max_error_int_, // maximum error integral value
@@ -513,7 +513,6 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
     dbg_msg.joint_states.push_back(fc.sensor_state_);
 
     dbg_msg.error_integral.push_back(fc.error_integral_);
-    dbg_msg.f_error_integral.push_back(fc.f_error_integral_);
 
     dbg_msg.joint_times.push_back(fc.joint_time_);
   }
@@ -541,6 +540,9 @@ inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controlle
     fc.init_k_ = config.init_k;
     fc.k_ = config.init_k;
     fc.noise_thresh_ = config.noise_t;
+    fc.K_i_ = config.k_i;
+    fc.K_p_ = config.k_p;
+    fc.max_vel_ = config.v_max;
   }
 }
 
