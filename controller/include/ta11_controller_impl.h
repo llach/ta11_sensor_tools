@@ -76,11 +76,8 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
                                     NOISE_THRESH, // force threshold
                                     target_force, // target force
                                     init_k_, // initial k
-                                    max_vel_, // maximum velocity
                                     K_p_, // K_p
-                                    K_i_, // K_i
-                                    max_error_int_, // maximum error integral value
-                                    f_error_window_ // force error integral windows length
+                                    K_i_ // K_i
                                     );
 
       jfc_.push_back(jfc);
@@ -175,7 +172,7 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
 
       typename TrajectoryPerJoint::const_iterator segment_it;
       if (state_ == fcc::CONTROLLER_STATE::FORCE_CTRL) {
-        jfc_[i].calculate(current_state_.position[i], desired_state_.position[i], period.toSec());
+        jfc_[i].calculate(current_state_.position[i], period.toSec());
 
         desired_joint_state_.position[0] = jfc_[i].get_p_des();
         desired_joint_state_.velocity[0] = jfc_[i].get_v_des();
@@ -503,9 +500,6 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
     dbg_msg.delta_p.push_back(fc.delta_p_);
     dbg_msg.delta_p_T.push_back(fc.delta_p_T_);
 
-    dbg_msg.delta_p_force.push_back(fc.delta_p_force_);
-    dbg_msg.delta_p_vel.push_back(fc.delta_p_vel_);
-
     dbg_msg.p_T.push_back(fc.p_T_);
 
     dbg_msg.v_des.push_back(fc.v_des_);
@@ -521,7 +515,6 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
   dbg_msg.noise_treshold = {-jfc_[0].noise_thresh_, jfc_[1].noise_thresh_};
 
   dbg_msg.c_state = state_;
-  dbg_msg.vel_limit = jfc_[0].vel_limit_;
 
   debug_pub_.publish(dbg_msg);
 }
@@ -542,7 +535,6 @@ inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controlle
     fc.noise_thresh_ = config.noise_t;
     fc.K_i_ = config.k_i;
     fc.K_p_ = config.k_p;
-    fc.max_vel_ = config.v_max;
   }
 }
 

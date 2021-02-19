@@ -106,13 +106,8 @@ protected:
 
     double init_k_ = 875;
 
-    double max_vel_ = 0.01;
-
     double K_p_ = 1;
     double K_i_ = 0.002;
-
-    double max_error_int_ = 1.1;
-    int f_error_window_ = 200;
 
     bool opening_ = false;
 
