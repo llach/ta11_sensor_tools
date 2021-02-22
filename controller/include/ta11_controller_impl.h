@@ -174,7 +174,7 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
       if (state_ == fcc::CONTROLLER_STATE::FORCE_CTRL) {
         jfc_[i].calculate(current_state_.position[i], period.toSec());
 
-        desired_joint_state_.position[0] = jfc_[i].get_p_des();
+        desired_joint_state_.position[0] = jfc_[i].get_q_des();
         desired_joint_state_.velocity[0] = jfc_[i].get_v_des();
       } else {
         segment_it =
@@ -494,13 +494,13 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
   for (auto& fc : jfc_){
     dbg_msg.k.push_back(fc.k_);
     dbg_msg.f.push_back(*fc.force_);
-    dbg_msg.p.push_back(fc.p_);
+    dbg_msg.q.push_back(fc.q_);
 
     dbg_msg.delta_F.push_back(fc.delta_F_);
-    dbg_msg.delta_p.push_back(fc.delta_p_);
-    dbg_msg.delta_p_T.push_back(fc.delta_p_T_);
+    dbg_msg.delta_q.push_back(fc.delta_q_);
+    dbg_msg.delta_q_T.push_back(fc.delta_q_T_);
 
-    dbg_msg.p_T.push_back(fc.p_T_);
+    dbg_msg.q_T.push_back(fc.q_T_);
 
     dbg_msg.v_des.push_back(fc.v_des_);
 
@@ -524,17 +524,17 @@ inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controlle
 //  ROS_INFO("Reconfigure Request:\n\ttarget_force: %f\n\tnoise_t: %f\n\tk: %d\n\tK_i: %f",
 //           config.target_force, config.noise_t, config.init_k, config.k_i);
   ROS_INFO_NAMED(name_, "RECONFIGURE\ntarget force: %f\ngoal maintain? %d\nk: %d\nnoise_t: %f",
-          config.target_force, config.goal_maintain, config.init_k, config.noise_t);
+          config.target_force, config.goal_maintain, config.k, config.noise_t);
 
   goal_maintain_ = config.goal_maintain;
 
   for (auto& fc : jfc_){
     fc.target_force_ = config.target_force;
-    fc.init_k_ = config.init_k;
-    fc.k_ = config.init_k;
+    fc.init_k_ = config.k;
+    fc.k_ = config.k;
     fc.noise_thresh_ = config.noise_t;
-    fc.K_i_ = config.k_i;
-    fc.K_p_ = config.k_p;
+    fc.K_i_ = config.K_i;
+    fc.K_p_ = config.K_p;
   }
 }
 
