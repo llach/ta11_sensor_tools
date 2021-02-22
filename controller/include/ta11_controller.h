@@ -71,6 +71,8 @@ protected:
     void publish_debug_info();
     bool check_controller_transition();
 
+    void setHoldForce(const ros::Time& time);
+
     bool kill_goal();
     bool kill_goal_srv(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
@@ -89,6 +91,8 @@ protected:
     bool goal_maintain_ = false;
 
     ros::Time curr_time_;
+
+    RealtimeGoalHandlePtr fgh_;
 
     typedef std::shared_ptr<TactileSensors> TactileSensorsPtr;
     TactileSensorsPtr sensors_;

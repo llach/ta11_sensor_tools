@@ -300,10 +300,7 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
       ROS_INFO_NAMED(name_, "Non-trajectory success");
 
       for (unsigned int i = 0; i < joints_.size(); ++i) {
-        ROS_INFO_NAMED(name_, "Setting joint %s to %f", jfc_[i].joint_name_.c_str(), current_state_.position[i]); // TODO or hold_state()?
-        desired_state_.position[i] = current_state_.position[i];
-        desired_state_.velocity[i] = current_state_.velocity[i];
-        desired_state_.acceleration[i] = current_state_.acceleration[i];
+        ROS_INFO_NAMED(name_, "Setting joint %s to %f", jfc_[i].joint_name_.c_str(), current_state_.position[i]);
 
         state_joint_error_.position[i] = 0.0;
         state_joint_error_.velocity[i] = 0.0;
@@ -318,10 +315,11 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
       current_active_goal->setSucceeded(current_active_goal->preallocated_result_);
       rt_active_goal_.reset();
       successful_joint_traj_.reset();
-      reset_parameters();
 
-      // Hold current position
-      setHoldPosition(time_data.uptime);
+      // Hold current force
+      setHoldForce(time_data.uptime);
+      
+      reset_parameters();
     }
   }
 
@@ -350,6 +348,34 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
   // Publish state
   publishState(time_data.uptime);
   realtime_busy_ = false;
+}
+
+template <class TactileSensors>
+inline void TA11TrajectoryController<TactileSensors>::setHoldForce(const ros::Time& time) {
+  ROS_INFO_NAMED(name_, "Holding Force ...");
+  fgh_ = RealtimeGoalHandlePtr();
+  const typename Segment::Time start_time = time.toSec();
+
+  ROS_INFO_NAMED(name_, "Generating Segments ...");
+  typename Segment::State force_hold_start_state_ {typename Segment::State(1)};
+  for (unsigned int i = 0; i < joints_.size(); ++i)
+  {
+    ROS_INFO_NAMED(name_, "Segment %d", i);
+
+    force_hold_start_state_.position[0]     =  jfc_[i].get_q_des();
+    force_hold_start_state_.velocity[0]     =  0.0;
+    force_hold_start_state_.acceleration[0] =  0.0;
+
+    ROS_INFO_NAMED(name_, "Holding %d at %f with current q %f", i, force_hold_start_state_.position[0], current_state_.position[i]);
+
+    Segment& segment {(*hold_trajectory_ptr_)[i].front()};
+    segment.init(start_time, force_hold_start_state_,
+                 start_time, force_hold_start_state_);
+    segment.setGoalHandle(fgh_);
+  }
+
+  ROS_INFO_NAMED(name_, "Setting trajectory ...");
+  curr_trajectory_box_.set(hold_trajectory_ptr_);
 }
 
 template <class TactileSensors>
