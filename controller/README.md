@@ -1,4 +1,5 @@
-## Useful Links
+# TA11 Force Controller
 
-* [JTC ROS wiki](http://wiki.ros.org/joint_trajectory_controller)
-* [JTC Trajectory Replacement](http://wiki.ros.org/joint_trajectory_controller/UnderstandingTrajectoryReplacement)
+A reactive Joint Trajectory Controller using the [force_controller_core](https://github.com/llach/force_controller_core).
+Expects force measurements to be published on `/ta11`.
+All relevant controller parameters can be changed via `rqt_reconfigure`.
