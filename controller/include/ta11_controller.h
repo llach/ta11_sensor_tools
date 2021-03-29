@@ -49,6 +49,8 @@
 #include <tiago_tactile_msgs/TA11Debug.h>
 #include <ta11_controller/TA11ControllerDRConfig.h>
 
+#include <tiago_tactile_msgs/GetForceThreshold.h>
+
 #include "force_controller_core/force_controller.h"
 
 namespace ta11_controller {
@@ -104,7 +106,7 @@ protected:
     std::vector<fcc::JointForceController> jfc_;
 
     // Force Controller parameters
-    double NOISE_THRESH = 0.04;
+    double noise_thresh = 0.04;
 
     double target_force = 1.2;
 

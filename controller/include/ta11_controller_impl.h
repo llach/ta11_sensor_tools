@@ -65,6 +65,18 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
                                           false));
     action_server_->start();
 
+    ROS_INFO_NAMED(name_, "fetching sensor noise threshold ...");
+    ros::ServiceClient s = root_nh.serviceClient<tiago_tactile_msgs::GetForceThreshold>("get_ta11_threshold");
+
+    tiago_tactile_msgs::GetForceThreshold gt;
+    if (s.call(gt)){
+      noise_thresh = gt.response.threshold;
+      ROS_INFO_NAMED(name_, "got %f from readout node", noise_thresh);
+    } else {
+      ROS_INFO_NAMED(name_, "could not contact node. using default %f", noise_thresh);
+    }
+
+
     kill_service_ = root_nh.advertiseService(std::string("kill_force_goal"), &TA11TrajectoryController::kill_goal_srv, this);
 
     for (int i=0; i<joint_names_.size(); i++){
@@ -73,7 +85,7 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
       std::shared_ptr<double> fp = std::make_shared<double>(0.0);
       fcc::JointForceController jfc(joint_names_[i],
                                     fp,
-                                    NOISE_THRESH, // force threshold
+                                    noise_thresh, // force threshold
                                     target_force, // target force
                                     init_k_, // initial k
                                     K_p_, // K_p
@@ -549,8 +561,8 @@ template <class TactileSensors>
 inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controller::TA11ControllerDRConfig &config, uint32_t level) {
 //  ROS_INFO("Reconfigure Request:\n\ttarget_force: %f\n\tnoise_t: %f\n\tk: %d\n\tK_i: %f",
 //           config.target_force, config.noise_t, config.init_k, config.k_i);
-  ROS_INFO_NAMED(name_, "RECONFIGURE\ntarget force: %f\ngoal maintain? %d\nk: %d\nnoise_t: %f",
-          config.target_force, config.goal_maintain, config.k, config.noise_t);
+  ROS_INFO_NAMED(name_, "RECONFIGURE\ntarget force: %f\ngoal maintain? %d\nk: %d",
+          config.target_force, config.goal_maintain, config.k);
 
   goal_maintain_ = config.goal_maintain;
 
@@ -558,7 +570,6 @@ inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controlle
     fc.target_force_ = config.target_force;
     fc.init_k_ = config.k;
     fc.k_ = config.k;
-    fc.noise_thresh_ = config.noise_t;
     fc.K_i_ = config.K_i;
     fc.K_p_ = config.K_p;
   }
