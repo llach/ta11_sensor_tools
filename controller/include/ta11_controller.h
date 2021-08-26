@@ -68,6 +68,7 @@ protected:
     bool init(hardware_interface::PositionJointInterface* hw, ros::NodeHandle& root_nh,
               ros::NodeHandle& controller_nh) override;
 
+    double object_pos();
     bool check_finished();
     void reset_parameters();
     void publish_debug_info();
@@ -99,6 +100,14 @@ protected:
     typedef std::shared_ptr<TactileSensors> TactileSensorsPtr;
     TactileSensorsPtr sensors_;
 
+    std::vector<double> last_q_;
+
+    double O_T_ = 0.0;
+    double O_t_ = 0.0;
+    double delta_O_ = 0.0;
+    double last_O_ = 0.0;
+
+
     // pointer to force vector. Written to by TactileSensors and read by ForceController
     std::vector<std::shared_ptr<double>> forces_;
 
@@ -116,6 +125,7 @@ protected:
     double K_i_ = 0.002;
 
     bool opening_ = false;
+    bool drift_corr_ = true;
 
     // indicates whether we are executing the trajectory, doing force control or are in transition between the two
     fcc::CONTROLLER_STATE state_;

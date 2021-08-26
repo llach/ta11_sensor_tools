@@ -68,14 +68,14 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
     ROS_INFO_NAMED(name_, "fetching sensor noise threshold ...");
     ros::ServiceClient s = root_nh.serviceClient<tiago_tactile_msgs::GetForceThreshold>("get_ta11_threshold");
 
-    tiago_tactile_msgs::GetForceThreshold gt;
-    if (s.call(gt)){
-      noise_thresh = gt.response.threshold;
-      ROS_INFO_NAMED(name_, "got %f from readout node", noise_thresh);
-    } else {
-      ROS_INFO_NAMED(name_, "could not contact node. using default %f", noise_thresh);
-    }
-
+    // the current (changing) noise characteristics necessitate intervention
+//    tiago_tactile_msgs::GetForceThreshold gt;
+//    if (s.call(gt)){
+//      noise_thresh = gt.response.threshold * 1.05;
+//      ROS_INFO_NAMED(name_, "got %f from readout node", noise_thresh);
+//    } else {
+//      ROS_INFO_NAMED(name_, "could not contact node. using default %f", noise_thresh);
+//    }
 
     kill_service_ = root_nh.advertiseService(std::string("kill_force_goal"), &TA11TrajectoryController::kill_goal_srv, this);
 
@@ -96,6 +96,7 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
       forces_.push_back(fp);
     }
 
+    last_q_ = std::vector<double>(joints_.size(), 0.0);
     sensors_ = std::make_shared<TactileSensors>(root_nh, forces_);
 
     debug_pub_ = root_nh.advertise<tiago_tactile_msgs::TA11Debug>("/ta11_debug", 1);
@@ -181,6 +182,9 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
       // There's no acceleration data available in a joint handle
       current_state_.position[i] = joints_[i].getPosition();
       current_state_.velocity[i] = joints_[i].getVelocity();
+
+      // inform individual force controller about current q
+      jfc_[i].set_q(current_state_.position[i]);
 
       typename TrajectoryPerJoint::const_iterator segment_it;
       if (state_ == fcc::CONTROLLER_STATE::FORCE_CTRL) {
@@ -335,6 +339,20 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     }
   }
 
+  // here we check for undesired object movements.
+  if (drift_corr_){
+    if (state_ == fcc::CONTROLLER_STATE::TRANSITION){
+      O_T_ = object_pos();
+      O_t_ = O_T_;
+      ROS_INFO_NAMED(name_, "O_T %f with r %f l%f", O_T_, current_state_.position[0], current_state_.position[1]);
+    } else if (state_ == fcc::CONTROLLER_STATE::FORCE_CTRL) {
+      O_t_ = object_pos();
+      delta_O_ = O_T_ - O_t_;
+      desired_state_.position[0] += delta_O_/2;
+      desired_state_.position[1] -= delta_O_/2;
+    }
+  }
+
   // Hardware interface adapter: Generate and send commands
   hw_iface_adapter_.updateCommand(time_data.uptime, time_data.period, desired_state_, state_error_);
 
@@ -352,6 +370,12 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
 
   }
 
+  // store last desired q
+  for (unsigned int i = 0; i < joints_.size(); ++i){
+    last_q_[i] = desired_state_.position[i];
+  }
+  last_O_ = O_t_;
+
   for(auto& fc : jfc_)
     fc.finish_iteration();
 
@@ -360,6 +384,11 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
   // Publish state
   publishState(time_data.uptime);
   realtime_busy_ = false;
+}
+
+template <class TactileSensors>
+inline double TA11TrajectoryController<TactileSensors>::object_pos(){
+  return (current_state_.position[0]-current_state_.position[1])/2;
 }
 
 template <class TactileSensors>
@@ -552,6 +581,10 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
   dbg_msg.max_forces = {-jfc_[0].target_force_, jfc_[1].target_force_};
   dbg_msg.noise_treshold = {-jfc_[0].noise_thresh_, jfc_[1].noise_thresh_};
 
+  dbg_msg.O_T = O_T_;
+  dbg_msg.O_t = O_t_;
+  dbg_msg.delta_O = delta_O_;
+
   dbg_msg.c_state = state_;
 
   debug_pub_.publish(dbg_msg);
@@ -565,6 +598,8 @@ inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controlle
           config.target_force, config.goal_maintain, config.k);
 
   goal_maintain_ = config.goal_maintain;
+  noise_thresh = config.noise_threshold;
+  drift_corr_ = config.drift_correction;
 
   for (auto& fc : jfc_){
     fc.target_force_ = config.target_force;
@@ -572,6 +607,7 @@ inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controlle
     fc.k_ = config.k;
     fc.K_i_ = config.K_i;
     fc.K_p_ = config.K_p;
+    fc.noise_thresh_ = config.noise_threshold;
   }
 }
 
