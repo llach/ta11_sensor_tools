@@ -102,11 +102,12 @@ protected:
 
     std::vector<double> last_q_;
 
+    double F_O_ = 0.0;
     double O_T_ = 0.0;
     double O_t_ = 0.0;
     double delta_O_ = 0.0;
     double last_O_ = 0.0;
-
+    double last_F_O_ = 0.0;
 
     // pointer to force vector. Written to by TactileSensors and read by ForceController
     std::vector<std::shared_ptr<double>> forces_;
@@ -124,8 +125,12 @@ protected:
     double K_p_ = 1;
     double K_i_ = 0.002;
 
+    double dc_factor_ = 0.0;
+    double dc_thresh_ = noise_thresh*dc_factor_;
+
     bool opening_ = false;
     bool drift_corr_ = true;
+    bool cond_drift_corr_ = true;
 
     // indicates whether we are executing the trajectory, doing force control or are in transition between the two
     fcc::CONTROLLER_STATE state_;

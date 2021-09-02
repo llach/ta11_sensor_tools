@@ -148,8 +148,10 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
   RealtimeGoalHandlePtr current_active_goal(rt_active_goal_);
   if (current_active_goal) {
 
-  // update joint state changes and report them
+    F_O_ = (*jfc_[0].force_-*jfc_[1].force_)/2;
   for (auto& fc : jfc_) {
+
+    // update joint state changes and report them
     fc.update_joint_states(period.toSec(), opening_);
 
     if (fc.sensor_state_ != fc.last_sensor_state_) {
@@ -173,6 +175,11 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
       for (auto& fc : jfc_)
         fc.on_transition();
     }
+
+    // store (initial) object reference frame
+    O_T_ = object_pos();
+    ROS_INFO_NAMED(name_, "O_T %f with r %f l%f", O_T_, current_state_.position[0], current_state_.position[1]);
+
     // if we were to revert back to trajectory mode, here is the place to do so
   }
 
@@ -339,19 +346,26 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     }
   }
 
-  // here we check for undesired object movements.
-  if (drift_corr_){
-    if (state_ == fcc::CONTROLLER_STATE::TRANSITION){
-      O_T_ = object_pos();
-      O_t_ = O_T_;
-      ROS_INFO_NAMED(name_, "O_T %f with r %f l%f", O_T_, current_state_.position[0], current_state_.position[1]);
-    } else if (state_ == fcc::CONTROLLER_STATE::FORCE_CTRL) {
-      O_t_ = object_pos();
-      delta_O_ = O_T_ - O_t_;
-      desired_state_.position[0] += delta_O_/2;
-      desired_state_.position[1] -= delta_O_/2;
+  // although this depends on a DC-relevant parameter, we do this reset in all configurations
+  for(auto& fc : jfc_){
+    if(std::abs(last_F_O_) < dc_thresh_ && std::abs(F_O_) > dc_thresh_){
+      ROS_INFO_NAMED(name_, "reset error integral for joint %s", fc.joint_name_.c_str());
+      fc.error_integral_ = 0.0;
     }
   }
+
+
+    // here we check for undesired object movements.
+    if (state_ == fcc::CONTROLLER_STATE::FORCE_CTRL && (drift_corr_ || cond_drift_corr_)){
+      if (cond_drift_corr_ && std::abs(F_O_) > dc_thresh_){
+        O_T_ = object_pos();
+      } else {
+        O_t_ = object_pos();
+        delta_O_ = O_T_ - O_t_;
+        desired_state_.position[0] += delta_O_/2;
+        desired_state_.position[1] -= delta_O_/2;
+      }
+    }
 
   // Hardware interface adapter: Generate and send commands
   hw_iface_adapter_.updateCommand(time_data.uptime, time_data.period, desired_state_, state_error_);
@@ -375,6 +389,7 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     last_q_[i] = desired_state_.position[i];
   }
   last_O_ = O_t_;
+  last_F_O_ = F_O_;
 
   for(auto& fc : jfc_)
     fc.finish_iteration();
@@ -579,8 +594,10 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
   }
 
   dbg_msg.max_forces = {-jfc_[0].target_force_, jfc_[1].target_force_};
-  dbg_msg.noise_treshold = {-jfc_[0].noise_thresh_, jfc_[1].noise_thresh_};
+  dbg_msg.noise_threshold = {-jfc_[0].noise_thresh_, jfc_[1].noise_thresh_};
+  dbg_msg.dc_threshold = {-dc_thresh_, dc_thresh_};
 
+  dbg_msg.F_O = F_O_;
   dbg_msg.O_T = O_T_;
   dbg_msg.O_t = O_t_;
   dbg_msg.delta_O = delta_O_;
@@ -597,10 +614,14 @@ inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controlle
   ROS_INFO_NAMED(name_, "RECONFIGURE\ntarget force: %f\ngoal maintain? %d\nk: %d",
           config.target_force, config.goal_maintain, config.k);
 
+  // store member vars
   goal_maintain_ = config.goal_maintain;
   noise_thresh = config.noise_threshold;
   drift_corr_ = config.drift_correction;
+  cond_drift_corr_ = config.conditional_drift_correction;
+  dc_factor_ = config.dc_factor;
 
+  // update force controllers
   for (auto& fc : jfc_){
     fc.target_force_ = config.target_force;
     fc.init_k_ = config.k;
@@ -609,6 +630,9 @@ inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controlle
     fc.K_p_ = config.K_p;
     fc.noise_thresh_ = config.noise_threshold;
   }
+
+  // update members
+  dc_thresh_ = noise_thresh*dc_factor_;
 }
 
 template <class TactileSensors>
