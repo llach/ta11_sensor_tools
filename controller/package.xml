@@ -13,6 +13,7 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <depend>roscpp</depend>
+  <depend>tf2_ros</depend>
   <depend>tiago_tactile_msgs</depend>
   <depend>controller_interface</depend>
   <depend>force_controller_core</depend>

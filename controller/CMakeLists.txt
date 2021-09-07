@@ -12,6 +12,7 @@ find_package(Eigen3 REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
         roscpp
+        tf2_ros
         std_srvs
         tiago_tactile_msgs
         controller_interface

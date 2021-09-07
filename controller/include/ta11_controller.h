@@ -41,11 +41,12 @@
 #include "std_srvs/Empty.h"
 
 #include <joint_trajectory_controller/joint_trajectory_controller.h>
+#include <joint_trajectory_controller/joint_trajectory_segment.h>
 #include <trajectory_interface/quintic_spline_segment.h>
 
-#include <joint_trajectory_controller/joint_trajectory_segment.h>
-
 #include <dynamic_reconfigure/server.h>
+#include <tf2_ros/transform_listener.h>
+
 #include <tiago_tactile_msgs/TA11Debug.h>
 #include <ta11_controller/TA11ControllerDRConfig.h>
 
@@ -131,6 +132,10 @@ protected:
     bool opening_ = false;
     bool drift_corr_ = true;
     bool cond_drift_corr_ = true;
+
+    tf2_ros::Buffer tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+
 
     // indicates whether we are executing the trajectory, doing force control or are in transition between the two
     fcc::CONTROLLER_STATE state_;

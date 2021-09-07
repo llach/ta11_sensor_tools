@@ -107,6 +107,8 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
 
     reset_parameters();
 
+    tf_listener_ = std::make_shared<tf2_ros::TransformListener>(tf_buffer_);
+
     ROS_INFO_NAMED(name_, "TA11 controller setup done!");
 
   return ret;
@@ -346,6 +348,15 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     }
   }
 
+  geometry_msgs::TransformStamped transformStamped;
+  try{
+    transformStamped = tf_buffer_.lookupTransform("base_link", "gripper_grasping_frame", ros::Time(0));
+  }
+  catch (tf2::TransformException &ex) {
+    ROS_WARN("%s",ex.what());
+  }
+
+
   // although this depends on a DC-relevant parameter, we do this reset in all configurations
   for(auto& fc : jfc_){
     if(std::abs(last_F_O_) < dc_thresh_ && std::abs(F_O_) > dc_thresh_){
@@ -354,18 +365,17 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     }
   }
 
-
-    // here we check for undesired object movements.
-    if (state_ == fcc::CONTROLLER_STATE::FORCE_CTRL && (drift_corr_ || cond_drift_corr_)){
-      if (cond_drift_corr_ && std::abs(F_O_) > dc_thresh_){
-        O_T_ = object_pos();
-      } else {
-        O_t_ = object_pos();
-        delta_O_ = O_T_ - O_t_;
-        desired_state_.position[0] += delta_O_/2;
-        desired_state_.position[1] -= delta_O_/2;
-      }
+  // here we check for undesired object movements.
+  if (state_ == fcc::CONTROLLER_STATE::FORCE_CTRL && (drift_corr_ || cond_drift_corr_)){
+    if (cond_drift_corr_ && std::abs(F_O_) > dc_thresh_){
+      O_T_ = object_pos();
+    } else {
+      O_t_ = object_pos();
+      delta_O_ = O_T_ - O_t_;
+      desired_state_.position[0] += delta_O_/2;
+      desired_state_.position[1] -= delta_O_/2;
     }
+  }
 
   // Hardware interface adapter: Generate and send commands
   hw_iface_adapter_.updateCommand(time_data.uptime, time_data.period, desired_state_, state_error_);
@@ -591,6 +601,8 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
     dbg_msg.error_integral.push_back(fc.error_integral_);
 
     dbg_msg.joint_times.push_back(fc.joint_time_);
+
+    dbg_msg.F_abs += std::abs(*fc.force_);
   }
 
   dbg_msg.max_forces = {-jfc_[0].target_force_, jfc_[1].target_force_};
