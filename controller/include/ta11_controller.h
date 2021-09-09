@@ -38,14 +38,18 @@
 #ifndef TA11_CONTROLLER_TA11_CONTROLLER_H
 #define TA11_CONTROLLER_TA11_CONTROLLER_H
 
+#include <mutex>
 #include "std_srvs/Empty.h"
+#include "std_msgs/Float64.h"
 
 #include <joint_trajectory_controller/joint_trajectory_controller.h>
 #include <joint_trajectory_controller/joint_trajectory_segment.h>
 #include <trajectory_interface/quintic_spline_segment.h>
 
 #include <dynamic_reconfigure/server.h>
+#include <tf2/convert.h>
 #include <tf2_ros/transform_listener.h>
+#include <tf2/LinearMath/Transform.h>
 
 #include <tiago_tactile_msgs/TA11Debug.h>
 #include <ta11_controller/TA11ControllerDRConfig.h>
@@ -80,6 +84,9 @@ protected:
     bool kill_goal();
     bool kill_goal_srv(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
+    void grav_cb(const std_msgs::Float64ConstPtr msg);
+
+    ros::Subscriber grav_sub_;
     ros::Publisher debug_pub_;
     dynamic_reconfigure::Server<ta11_controller::TA11ControllerDRConfig> server_;
     dynamic_reconfigure::Server<ta11_controller::TA11ControllerDRConfig>::CallbackType f_;
@@ -132,6 +139,12 @@ protected:
     bool opening_ = false;
     bool drift_corr_ = true;
     bool cond_drift_corr_ = true;
+    bool gravity_corr_ = true;
+
+    std::mutex grav_mtx_;
+    float cosGrav_ = 0.0;
+    float gravDrift_ = 0.0;
+    float mass_ = 48; // in gramms
 
     tf2_ros::Buffer tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;

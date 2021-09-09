@@ -11,6 +11,7 @@ endif ()
 find_package(Eigen3 REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
+        tf2
         roscpp
         tf2_ros
         std_srvs

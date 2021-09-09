@@ -87,6 +87,7 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
                                     fp,
                                     noise_thresh, // force threshold
                                     target_force, // target force
+                                    0.00027, // max error
                                     init_k_, // initial k
                                     K_p_, // K_p
                                     K_i_ // K_i
@@ -100,6 +101,7 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
     sensors_ = std::make_shared<TactileSensors>(root_nh, forces_);
 
     debug_pub_ = root_nh.advertise<tiago_tactile_msgs::TA11Debug>("/ta11_debug", 1);
+    grav_sub_ = root_nh.subscribe("gripper_gravity_comp", 1, &TA11TrajectoryController<TactileSensors>::grav_cb, this);
 
     ROS_INFO_NAMED(name_, "registering dynamic reconfigure server ...");
     f_ = boost::bind(&TA11TrajectoryController<TactileSensors>::dr_callback, this, _1, _2);
@@ -112,6 +114,13 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
     ROS_INFO_NAMED(name_, "TA11 controller setup done!");
 
   return ret;
+}
+
+template <class TactileSensors>
+inline void TA11TrajectoryController<TactileSensors>::grav_cb(const std_msgs::Float64ConstPtr msg) {
+  grav_mtx_.lock();
+  cosGrav_ = msg->data;
+  grav_mtx_.unlock();
 }
 
 template <class TactileSensors>
@@ -348,14 +357,13 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     }
   }
 
-  geometry_msgs::TransformStamped transformStamped;
-  try{
-    transformStamped = tf_buffer_.lookupTransform("base_link", "gripper_grasping_frame", ros::Time(0));
-  }
-  catch (tf2::TransformException &ex) {
-    ROS_WARN("%s",ex.what());
-  }
+  grav_mtx_.lock();
+  gravDrift_ = (mass_ / 1000) * cosGrav_;
+  grav_mtx_.unlock();
 
+  if (gravity_corr_) {
+    F_O_ = F_O_ - gravDrift_;
+  }
 
   // although this depends on a DC-relevant parameter, we do this reset in all configurations
   for(auto& fc : jfc_){
@@ -616,6 +624,22 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
 
   dbg_msg.c_state = state_;
 
+  grav_mtx_.lock();
+  dbg_msg.cos_grav = cosGrav_;
+  grav_mtx_.unlock();
+  dbg_msg.grav_drift = gravDrift_;
+
+  if (gravity_corr_) {
+    dbg_msg.F_O_corr = F_O_;
+  } else {
+    dbg_msg.F_O_corr = F_O_ - gravDrift_;
+  }
+
+
+  if (gravity_corr_) {
+    F_O_ = F_O_ - gravDrift_;
+  }
+
   debug_pub_.publish(dbg_msg);
 }
 
@@ -632,6 +656,8 @@ inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controlle
   drift_corr_ = config.drift_correction;
   cond_drift_corr_ = config.conditional_drift_correction;
   dc_factor_ = config.dc_factor;
+  mass_ = config.mass;
+  gravity_corr_ = config.gravity_drift_compensation;
 
   // update force controllers
   for (auto& fc : jfc_){
