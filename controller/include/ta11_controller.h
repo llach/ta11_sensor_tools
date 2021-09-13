@@ -110,12 +110,15 @@ protected:
 
     std::vector<double> last_q_;
 
-    double F_O_ = 0.0;
+    double F_diff_ = 0.0;
+    double F_add_ = 0.0;
+
     double O_T_ = 0.0;
     double O_t_ = 0.0;
     double delta_O_ = 0.0;
     double last_O_ = 0.0;
-    double last_F_O_ = 0.0;
+    double last_F_diff_ = 0.0;
+    double last_F_add_ = 0.0;
 
     // pointer to force vector. Written to by TactileSensors and read by ForceController
     std::vector<std::shared_ptr<double>> forces_;
@@ -146,9 +149,31 @@ protected:
     float gravDrift_ = 0.0;
     float mass_ = 48; // in gramms
 
+    // PI controller
+    double deltaF_diff_ = 0.0;
+    double deltaF_add_ = 0.0;
+
+    double error_int_diff_ = 0.0;
+    double error_int_add_ = 0.0;
+
+    double max_error_ = 0.00027;
+    double max_error_add_ = 0.00027;
+
+    double deltaQ_diff_ = 0.0;
+    double deltaQ_add_ = 0.0;
+
+    double last_deltaQ_diff_ = 0.0;
+    double last_deltaQ_add_ = 0.0;
+
+    std::vector<double> q_des_ = {0.0, 0.0};
+    std::vector<double> last_q_des_ = {0.0, 0.0};
+
+    bool diff_mode_ = false;
+
+    std::vector<int> signs_ = {1, -1};
+
     tf2_ros::Buffer tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
-
 
     // indicates whether we are executing the trajectory, doing force control or are in transition between the two
     fcc::CONTROLLER_STATE state_;

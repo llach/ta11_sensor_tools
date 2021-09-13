@@ -158,59 +158,53 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
    */
   RealtimeGoalHandlePtr current_active_goal(rt_active_goal_);
   if (current_active_goal) {
+    F_diff_ = (*jfc_[0].force_ - *jfc_[1].force_);
+    F_add_ = (*jfc_[0].force_ + *jfc_[1].force_);
 
-    F_O_ = (*jfc_[0].force_-*jfc_[1].force_)/2;
-  for (auto& fc : jfc_) {
+    for (auto &fc : jfc_) {
+      // update joint state changes and report them
+      fc.update_joint_states(period.toSec(), opening_);
 
-    // update joint state changes and report them
-    fc.update_joint_states(period.toSec(), opening_);
-
-    if (fc.sensor_state_ != fc.last_sensor_state_) {
-      ROS_INFO_NAMED(name_ + ".sensorStateChange",
-                     "%s's state changed from %s to %s. f_t-1 %.4f, f_t %.4f", fc.joint_name_.c_str(),
-                     fcc::STATE_STRING.at(fc.last_sensor_state_).c_str(), fcc::STATE_STRING.at(fc.sensor_state_).c_str(),
-                     fc.last_force_, *fc.force_);
-    }
-  }
-
-  // update controller state
-  if (state_ == fcc::CONTROLLER_STATE::TRANSITION) {
-    // if the transition was detected last time, we enter force_control from here onwards
-    state_ = fcc::CONTROLLER_STATE::FORCE_CTRL;
-  } else if (state_ == fcc::CONTROLLER_STATE::TRAJECTORY_EXEC) {
-    if (check_controller_transition() && !opening_) {
-      ROS_INFO_NAMED(name_, "CONTROLLER TRANSITION");
-      state_ = fcc::CONTROLLER_STATE::TRANSITION;
-
-      // Store reference data.
-      for (auto& fc : jfc_)
-        fc.on_transition();
+      if (fc.sensor_state_ != fc.last_sensor_state_) {
+        ROS_INFO_NAMED(name_ + ".sensorStateChange",
+                       "%s's state changed from %s to %s. f_t-1 %.4f, f_t %.4f", fc.joint_name_.c_str(),
+                       fcc::STATE_STRING.at(fc.last_sensor_state_).c_str(),
+                       fcc::STATE_STRING.at(fc.sensor_state_).c_str(),
+                       fc.last_force_, *fc.force_);
+      }
     }
 
-    // store (initial) object reference frame
-    O_T_ = object_pos();
-    ROS_INFO_NAMED(name_, "O_T %f with r %f l%f", O_T_, current_state_.position[0], current_state_.position[1]);
+    // update controller state
+    if (state_ == fcc::CONTROLLER_STATE::TRANSITION) {
+      // if the transition was detected last time, we enter force_control from here onwards
+      state_ = fcc::CONTROLLER_STATE::FORCE_CTRL;
+    } else if (state_ == fcc::CONTROLLER_STATE::TRAJECTORY_EXEC) {
+      if (check_controller_transition() && !opening_) {
+        ROS_INFO_NAMED(name_, "CONTROLLER TRANSITION");
+        state_ = fcc::CONTROLLER_STATE::TRANSITION;
 
-    // if we were to revert back to trajectory mode, here is the place to do so
-  }
+        // Store reference data.
+        for (auto &fc : jfc_)
+          fc.on_transition();
+      }
+
+      // store (initial) object reference frame
+      O_T_ = object_pos();
+//      ROS_INFO_NAMED(name_, "O_T %f with r %f l%f", O_T_, current_state_.position[0], current_state_.position[1]);
+    }
 
     // Update desired state and state error
-    for (unsigned int i = 0; i < joints_.size(); ++i) {
+    if (state_ != fcc::CONTROLLER_STATE::FORCE_CTRL) {
+      for (unsigned int i = 0; i < joints_.size(); ++i) {
 
-      // There's no acceleration data available in a joint handle
-      current_state_.position[i] = joints_[i].getPosition();
-      current_state_.velocity[i] = joints_[i].getVelocity();
+        // There's no acceleration data available in a joint handle
+        current_state_.position[i] = joints_[i].getPosition();
+        current_state_.velocity[i] = joints_[i].getVelocity();
 
-      // inform individual force controller about current q
-      jfc_[i].set_q(current_state_.position[i]);
+        // inform individual force controller about current q
+        jfc_[i].set_q(current_state_.position[i]);
 
-      typename TrajectoryPerJoint::const_iterator segment_it;
-      if (state_ == fcc::CONTROLLER_STATE::FORCE_CTRL) {
-        jfc_[i].calculate(current_state_.position[i], period.toSec());
-
-        desired_joint_state_.position[0] = jfc_[i].get_q_des();
-        desired_joint_state_.velocity[0] = jfc_[i].get_v_des();
-      } else {
+        typename TrajectoryPerJoint::const_iterator segment_it;
         segment_it =
                 sample(curr_traj[i], jfc_[i].joint_time_, desired_joint_state_);
         if (curr_traj[i].end() == segment_it) {
@@ -221,25 +215,23 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
           cancelCB(current_active_goal->gh_);
           return;
         }
-      }
 
-      desired_state_.position[i] = desired_joint_state_.position[0];
-      desired_state_.velocity[i] = desired_joint_state_.velocity[0];
-      desired_state_.acceleration[i] = desired_joint_state_.acceleration[0];
+        desired_state_.position[i] = desired_joint_state_.position[0];
+        desired_state_.velocity[i] = desired_joint_state_.velocity[0];
+        desired_state_.acceleration[i] = desired_joint_state_.acceleration[0];
 
+        state_joint_error_.position[0] =
+                angles::shortest_angular_distance(current_state_.position[i], desired_joint_state_.position[0]);
+        state_joint_error_.velocity[0] = desired_joint_state_.velocity[0] - current_state_.velocity[i];
+        state_joint_error_.acceleration[0] = 0.0;
 
-      state_joint_error_.position[0] =
-              angles::shortest_angular_distance(current_state_.position[i], desired_joint_state_.position[0]);
-      state_joint_error_.velocity[0] = desired_joint_state_.velocity[0] - current_state_.velocity[i];
-      state_joint_error_.acceleration[0] = 0.0;
+        state_error_.position[i] =
+                angles::shortest_angular_distance(current_state_.position[i], desired_joint_state_.position[0]);
+        state_error_.velocity[i] = desired_joint_state_.velocity[0] - current_state_.velocity[i];
+        state_error_.acceleration[i] = 0.0;
 
-      state_error_.position[i] =
-              angles::shortest_angular_distance(current_state_.position[i], desired_joint_state_.position[0]);
-      state_error_.velocity[i] = desired_joint_state_.velocity[0] - current_state_.velocity[i];
-      state_error_.acceleration[i] = 0.0;
-
-      // Check tolerances
-      if (state_ != fcc::CONTROLLER_STATE::FORCE_CTRL) { // => Trajectory Execution || NOTE this might cause non terminating controller if case 2
+        // Check tolerances
+        // => Trajectory Execution || NOTE this might cause non terminating controller if case 2
         const RealtimeGoalHandlePtr rt_segment_goal = segment_it->getGoalHandle();
         if (rt_segment_goal && rt_segment_goal == rt_active_goal_) {
           // Check tolerances
@@ -319,7 +311,85 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     }
   }
 
-  // If there is an active goal and all segments finished successfully then set goal as succeeded
+  if (state_ == fcc::CONTROLLER_STATE::FORCE_CTRL) {
+    grav_mtx_.lock();
+    gravDrift_ = (mass_ / 1000) * cosGrav_;
+    grav_mtx_.unlock();
+
+    if (gravity_corr_) {
+      F_diff_ = F_diff_ - 2*gravDrift_;
+//      F_add_ = F_add_ + gravDrift_;
+    }
+
+    diff_mode_ = std::abs(F_diff_) > dc_thresh_;
+
+    deltaF_diff_ = (F_diff_ / jfc_[0].k_);
+    deltaF_add_ = ((jfc_[0].target_force_ - F_add_) / jfc_[0].k_);
+
+    double dt = period.toSec();
+
+    error_int_diff_ += deltaF_diff_ * dt;
+    if (error_int_diff_ > max_error_)
+      error_int_diff_ = max_error_;
+    if (error_int_diff_ < -max_error_)
+      error_int_diff_ = -max_error_;
+
+    error_int_add_ += deltaF_add_ * dt;
+    if (error_int_add_ > max_error_add_)
+      error_int_add_ = max_error_add_;
+    if (error_int_add_ < -max_error_add_)
+      error_int_add_ = -max_error_add_;
+
+    if(std::abs(last_F_diff_) <= dc_thresh_ && std::abs(F_diff_) > dc_thresh_){
+      ROS_INFO_NAMED(name_, "reset DIFF error integral");
+      error_int_diff_ = 0.0;
+    }
+//    if(std::abs(last_F_diff_) >= dc_thresh_ && std::abs(F_diff_) < dc_thresh_){
+//      ROS_INFO_NAMED(name_, "reset ADD error integral");
+//      error_int_add_ = 0.0;
+//    }
+
+    deltaQ_diff_ = K_p_ * deltaF_diff_ + K_i_ * error_int_diff_;
+    deltaQ_add_ = K_p_ * deltaF_add_ + K_i_ * error_int_add_;
+
+    q_des_[0] = -deltaQ_add_/2;
+    q_des_[1] = -deltaQ_add_/2;
+
+    if (diff_mode_ && drift_corr_) {
+      q_des_[0] += signs_[0] * (deltaQ_diff_/2);
+      q_des_[1] += signs_[1] * (deltaQ_diff_/2);
+    }
+
+    for (unsigned int i = 0; i < joints_.size(); ++i) {
+      // There's no acceleration data available in a joint handle
+      current_state_.position[i] = joints_[i].getPosition();
+      current_state_.velocity[i] = joints_[i].getVelocity();
+
+      // inform individual force controller about current q
+      jfc_[i].set_q(current_state_.position[i]);
+      jfc_[i].calculate(current_state_.position[i], period.toSec());
+
+      desired_joint_state_.position[0] = current_state_.position[i] + q_des_[i];
+      desired_joint_state_.velocity[0] = (q_des_[i] - last_q_des_[i]) / (dt);
+
+      desired_state_.position[i] = desired_joint_state_.position[0];
+      desired_state_.velocity[i] = desired_joint_state_.velocity[0];
+      desired_state_.acceleration[i] = desired_joint_state_.acceleration[0];
+
+
+      state_joint_error_.position[0] =
+              angles::shortest_angular_distance(current_state_.position[i], desired_joint_state_.position[0]);
+      state_joint_error_.velocity[0] = desired_joint_state_.velocity[0] - current_state_.velocity[i];
+      state_joint_error_.acceleration[0] = 0.0;
+
+      state_error_.position[i] =
+              angles::shortest_angular_distance(current_state_.position[i], desired_joint_state_.position[0]);
+      state_error_.velocity[i] = desired_joint_state_.velocity[0] - current_state_.velocity[i];
+      state_error_.acceleration[i] = 0.0;
+    }
+  }
+
+    // If there is an active goal and all segments finished successfully then set goal as succeeded
   // current_active_goal is reused from above the state update
   if (current_active_goal && current_active_goal->preallocated_result_ &&
       successful_joint_traj_.count() == joints_.size()) {
@@ -357,34 +427,6 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     }
   }
 
-  grav_mtx_.lock();
-  gravDrift_ = (mass_ / 1000) * cosGrav_;
-  grav_mtx_.unlock();
-
-  if (gravity_corr_) {
-    F_O_ = F_O_ - gravDrift_;
-  }
-
-  // although this depends on a DC-relevant parameter, we do this reset in all configurations
-  for(auto& fc : jfc_){
-    if(std::abs(last_F_O_) < dc_thresh_ && std::abs(F_O_) > dc_thresh_){
-      ROS_INFO_NAMED(name_, "reset error integral for joint %s", fc.joint_name_.c_str());
-      fc.error_integral_ = 0.0;
-    }
-  }
-
-  // here we check for undesired object movements.
-  if (state_ == fcc::CONTROLLER_STATE::FORCE_CTRL && (drift_corr_ || cond_drift_corr_)){
-    if (cond_drift_corr_ && std::abs(F_O_) > dc_thresh_){
-      O_T_ = object_pos();
-    } else {
-      O_t_ = object_pos();
-      delta_O_ = O_T_ - O_t_;
-      desired_state_.position[0] += delta_O_/2;
-      desired_state_.position[1] -= delta_O_/2;
-    }
-  }
-
   // Hardware interface adapter: Generate and send commands
   hw_iface_adapter_.updateCommand(time_data.uptime, time_data.period, desired_state_, state_error_);
 
@@ -405,9 +447,14 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
   // store last desired q
   for (unsigned int i = 0; i < joints_.size(); ++i){
     last_q_[i] = desired_state_.position[i];
+    last_q_des_[i] = q_des_[i];
   }
   last_O_ = O_t_;
-  last_F_O_ = F_O_;
+  last_F_diff_ = F_diff_;
+  last_F_add_ = F_add_;
+
+  last_deltaQ_diff_ = deltaQ_diff_;
+  last_deltaQ_add_ = deltaQ_add_;
 
   for(auto& fc : jfc_)
     fc.finish_iteration();
@@ -597,7 +644,6 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
     dbg_msg.q.push_back(fc.q_);
 
     dbg_msg.delta_F.push_back(fc.delta_F_);
-    dbg_msg.delta_q.push_back(fc.delta_q_);
     dbg_msg.delta_q_T.push_back(fc.delta_q_T_);
 
     dbg_msg.q_T.push_back(fc.q_T_);
@@ -606,18 +652,23 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
 
     dbg_msg.joint_states.push_back(fc.sensor_state_);
 
-    dbg_msg.error_integral.push_back(fc.error_integral_);
-
     dbg_msg.joint_times.push_back(fc.joint_time_);
 
     dbg_msg.F_abs += std::abs(*fc.force_);
   }
 
+  dbg_msg.q_des ={desired_state_.position[0], desired_state_.position[1]};
+  dbg_msg.delta_q = {q_des_[0], q_des_[1]};
+
+  dbg_msg.error_integral = {error_int_diff_, error_int_add_};
+
+
   dbg_msg.max_forces = {-jfc_[0].target_force_, jfc_[1].target_force_};
   dbg_msg.noise_threshold = {-jfc_[0].noise_thresh_, jfc_[1].noise_thresh_};
   dbg_msg.dc_threshold = {-dc_thresh_, dc_thresh_};
 
-  dbg_msg.F_O = F_O_;
+  dbg_msg.F_diff = F_diff_;
+  dbg_msg.F_add = F_add_;
   dbg_msg.O_T = O_T_;
   dbg_msg.O_t = O_t_;
   dbg_msg.delta_O = delta_O_;
@@ -630,14 +681,11 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
   dbg_msg.grav_drift = gravDrift_;
 
   if (gravity_corr_) {
-    dbg_msg.F_O_corr = F_O_;
+    dbg_msg.F_diff_corr = F_diff_;
+    dbg_msg.F_add_corr = F_add_;
   } else {
-    dbg_msg.F_O_corr = F_O_ - gravDrift_;
-  }
-
-
-  if (gravity_corr_) {
-    F_O_ = F_O_ - gravDrift_;
+    dbg_msg.F_diff_corr = F_diff_ - gravDrift_;
+    dbg_msg.F_add_corr = F_add_ - gravDrift_;
   }
 
   debug_pub_.publish(dbg_msg);
@@ -668,6 +716,9 @@ inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controlle
     fc.K_p_ = config.K_p;
     fc.noise_thresh_ = config.noise_threshold;
   }
+
+  K_i_ = config.K_i;
+  K_p_ = config.K_p;
 
   // update members
   dc_thresh_ = noise_thresh*dc_factor_;
