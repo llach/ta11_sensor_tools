@@ -318,7 +318,7 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
 
     if (gravity_corr_) {
       F_diff_ = F_diff_ - 2*gravDrift_;
-//      F_add_ = F_add_ + gravDrift_;
+//      F_add_ = F_add_ + gravDrift_;x
     }
 
     diff_mode_ = std::abs(F_diff_) > dc_thresh_;
@@ -328,11 +328,11 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
 
     double dt = period.toSec();
 
-    error_int_diff_ += deltaF_diff_ * dt;
-    if (error_int_diff_ > max_error_)
-      error_int_diff_ = max_error_;
-    if (error_int_diff_ < -max_error_)
-      error_int_diff_ = -max_error_;
+//    error_int_diff_ += deltaF_diff_ * dt;
+//    if (error_int_diff_ > max_error_)
+//      error_int_diff_ = max_error_;
+//    if (error_int_diff_ < -max_error_)
+//      error_int_diff_ = -max_error_;
 
     error_int_add_ += deltaF_add_ * dt;
     if (error_int_add_ > max_error_add_)
@@ -340,16 +340,16 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     if (error_int_add_ < -max_error_add_)
       error_int_add_ = -max_error_add_;
 
-    if(std::abs(last_F_diff_) <= dc_thresh_ && std::abs(F_diff_) > dc_thresh_){
-      ROS_INFO_NAMED(name_, "reset DIFF error integral");
-      error_int_diff_ = 0.0;
-    }
+//    if(std::abs(last_F_diff_) <= dc_thresh_ && std::abs(F_diff_) > dc_thresh_){
+//      ROS_INFO_NAMED(name_, "reset DIFF error integral");
+//      error_int_diff_ = 0.0;
+//    }
 //    if(std::abs(last_F_diff_) >= dc_thresh_ && std::abs(F_diff_) < dc_thresh_){
 //      ROS_INFO_NAMED(name_, "reset ADD error integral");
 //      error_int_add_ = 0.0;
 //    }
 
-    deltaQ_diff_ = K_p_ * deltaF_diff_ + K_i_ * error_int_diff_;
+    deltaQ_diff_ = K_p_diff_ * deltaF_diff_ ;//+ K_i_ * error_int_diff_;
     deltaQ_add_ = K_p_ * deltaF_add_ + K_i_ * error_int_add_;
 
     q_des_[0] = -deltaQ_add_/2;
@@ -719,6 +719,7 @@ inline void TA11TrajectoryController<TactileSensors>::dr_callback(ta11_controlle
 
   K_i_ = config.K_i;
   K_p_ = config.K_p;
+  K_p_diff_ = config.K_p_diff;
 
   // update members
   dc_thresh_ = noise_thresh*dc_factor_;

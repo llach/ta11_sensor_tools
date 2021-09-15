@@ -134,6 +134,7 @@ protected:
     double init_k_ = 875;
 
     double K_p_ = 1;
+    double K_p_diff_ = 2;
     double K_i_ = 0.002;
 
     double dc_factor_ = 0.0;
