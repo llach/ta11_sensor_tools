@@ -68,15 +68,6 @@ inline bool TA11TrajectoryController<TactileSensors>::init(hardware_interface::P
     ROS_INFO_NAMED(name_, "fetching sensor noise threshold ...");
     ros::ServiceClient s = root_nh.serviceClient<tiago_tactile_msgs::GetForceThreshold>("get_ta11_threshold");
 
-    // the current (changing) noise characteristics necessitate intervention
-//    tiago_tactile_msgs::GetForceThreshold gt;
-//    if (s.call(gt)){
-//      noise_thresh = gt.response.threshold * 1.05;
-//      ROS_INFO_NAMED(name_, "got %f from readout node", noise_thresh);
-//    } else {
-//      ROS_INFO_NAMED(name_, "could not contact node. using default %f", noise_thresh);
-//    }
-
     kill_service_ = root_nh.advertiseService(std::string("kill_force_goal"), &TA11TrajectoryController::kill_goal_srv, this);
 
     for (int i=0; i<joint_names_.size(); i++){
@@ -157,10 +148,10 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
    * Update forces and sensor states.
    */
   RealtimeGoalHandlePtr current_active_goal(rt_active_goal_);
-  if (current_active_goal) {
-    F_diff_ = (*jfc_[0].force_ - *jfc_[1].force_);
-    F_add_ = (*jfc_[0].force_ + *jfc_[1].force_);
+  F_diff_ = (*jfc_[0].force_ - *jfc_[1].force_);
+  F_add_ = (*jfc_[0].force_ + *jfc_[1].force_);
 
+  if (current_active_goal) {
     for (auto &fc : jfc_) {
       // update joint state changes and report them
       fc.update_joint_states(period.toSec(), opening_);
@@ -318,7 +309,6 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
 
     if (gravity_corr_) {
       F_diff_ = F_diff_ - 2*gravDrift_;
-//      F_add_ = F_add_ + gravDrift_;x
     }
 
     diff_mode_ = std::abs(F_diff_) > dc_thresh_;
@@ -328,11 +318,11 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
 
     double dt = period.toSec();
 
-//    error_int_diff_ += deltaF_diff_ * dt;
-//    if (error_int_diff_ > max_error_)
-//      error_int_diff_ = max_error_;
-//    if (error_int_diff_ < -max_error_)
-//      error_int_diff_ = -max_error_;
+    error_int_diff_ += deltaF_diff_ * dt;
+    if (error_int_diff_ > max_error_)
+      error_int_diff_ = max_error_;
+    if (error_int_diff_ < -max_error_)
+      error_int_diff_ = -max_error_;
 
     error_int_add_ += deltaF_add_ * dt;
     if (error_int_add_ > max_error_add_)
@@ -340,16 +330,17 @@ inline void TA11TrajectoryController<TactileSensors>::update(const ros::Time& ti
     if (error_int_add_ < -max_error_add_)
       error_int_add_ = -max_error_add_;
 
-//    if(std::abs(last_F_diff_) <= dc_thresh_ && std::abs(F_diff_) > dc_thresh_){
-//      ROS_INFO_NAMED(name_, "reset DIFF error integral");
-//      error_int_diff_ = 0.0;
-//    }
+    if(std::abs(last_F_diff_) <= dc_thresh_ && std::abs(F_diff_) > dc_thresh_){
+      ROS_INFO_NAMED(name_, "reset DIFF error integral");
+      error_int_diff_ = 0.0;
+    }
+
 //    if(std::abs(last_F_diff_) >= dc_thresh_ && std::abs(F_diff_) < dc_thresh_){
 //      ROS_INFO_NAMED(name_, "reset ADD error integral");
 //      error_int_add_ = 0.0;
 //    }
 
-    deltaQ_diff_ = K_p_diff_ * deltaF_diff_ ;//+ K_i_ * error_int_diff_;
+    deltaQ_diff_ = K_p_diff_ * deltaF_diff_ + K_i_ * error_int_diff_;
     deltaQ_add_ = K_p_ * deltaF_add_ + K_i_ * error_int_add_;
 
     q_des_[0] = -deltaQ_add_/2;
@@ -640,7 +631,7 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
 
   for (auto& fc : jfc_){
     dbg_msg.k.push_back(fc.k_);
-    dbg_msg.f.push_back(*fc.force_);
+    dbg_msg.f.push_back((*fc.force_)*11);
     dbg_msg.q.push_back(fc.q_);
 
     dbg_msg.delta_F.push_back(fc.delta_F_);
@@ -662,13 +653,12 @@ inline void TA11TrajectoryController<TactileSensors>::publish_debug_info() {
 
   dbg_msg.error_integral = {error_int_diff_, error_int_add_};
 
-
-  dbg_msg.max_forces = {-jfc_[0].target_force_, jfc_[1].target_force_};
-  dbg_msg.noise_threshold = {-jfc_[0].noise_thresh_, jfc_[1].noise_thresh_};
+  dbg_msg.max_forces = {-jfc_[0].target_force_*11, jfc_[1].target_force_*11};
+  dbg_msg.noise_threshold = {-jfc_[0].noise_thresh_*11, jfc_[1].noise_thresh_*11};
   dbg_msg.dc_threshold = {-dc_thresh_, dc_thresh_};
 
-  dbg_msg.F_diff = F_diff_;
-  dbg_msg.F_add = F_add_;
+  dbg_msg.F_diff = F_diff_*11;
+  dbg_msg.F_add = F_add_*11;
   dbg_msg.O_T = O_T_;
   dbg_msg.O_t = O_t_;
   dbg_msg.delta_O = delta_O_;

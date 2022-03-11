@@ -8,6 +8,8 @@ else ()
     set(CMAKE_CXX_STANDARD 14)
 endif ()
 
+set(DISABLE_PAL_FLAGS "TRUE")
+
 find_package(Eigen3 REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -25,7 +27,7 @@ generate_dynamic_reconfigure_options(
         cfg/TA11ControllerDR.cfg
 )
 
-disable_pal_flags()
+#disable_pal_flags()
 
 catkin_package(
         CATKIN_DEPENDS

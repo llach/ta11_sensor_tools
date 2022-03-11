@@ -1,9 +1,13 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(ta11_viz)
+
+set(DISABLE_PAL_FLAGS "TRUE")
+
 find_package(catkin REQUIRED COMPONENTS rviz tiago_tactile_msgs)
 catkin_package()
 include_directories(${catkin_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS})
+
 
 ## This setting causes Qt's "MOC" generation to happen automatically.
 set(CMAKE_AUTOMOC ON)
@@ -31,7 +35,7 @@ add_definitions(-DQT_NO_KEYWORDS)
 set(SRC_FILES
         src/ta11_display.cpp
         )
-disable_pal_flags()
+      #disable_pal_flags()
 ## An rviz plugin is just a shared library, so here we declare the
 ## library to be called ``${PROJECT_NAME}`` and specify the list of
 ## source files we collected above in ``${SRC_FILES}``.
